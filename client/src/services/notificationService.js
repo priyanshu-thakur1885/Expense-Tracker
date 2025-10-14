@@ -85,7 +85,7 @@ class NotificationService {
 
     try {
       // Fetch current budget data
-      const response = await fetch('${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/budget');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/budget`);
       if (!response.ok) return;
       
       const data = await response.json();
@@ -184,7 +184,7 @@ class NotificationService {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || '${process.env.REACT_APP_API_URL || 'http://localhost:5000'}'}/api/expenses/stats/summary?period=week`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/expenses/stats/summary?period=week`);
       if (!response.ok) return;
       
       const data = await response.json();
@@ -250,7 +250,7 @@ class NotificationService {
 
     try {
       // Fetch current budget data
-      const response = await fetch('${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/budget');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/budget`);
       if (!response.ok) return;
       
       const data = await response.json();
