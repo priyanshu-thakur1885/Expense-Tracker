@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
   // Set up axios defaults
   useEffect(() => {
     // Set base URL for API calls
-    axios.defaults.baseURL = 'http://localhost:5000';
+    axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
     
     if (state.token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;

@@ -68,7 +68,7 @@ export const SocketProvider = ({ children }) => {
     setMessages(savedMessages);
 
     // Initialize socket connection
-    const newSocket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:5000', {
+    const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
       auth: {
         token: token
       },
@@ -78,7 +78,7 @@ export const SocketProvider = ({ children }) => {
     // Connection events
     newSocket.on('connect', () => {
       console.log('✅ Socket connected:', newSocket.id);
-      console.log('🔗 Server URL:', process.env.REACT_APP_SERVER_URL || 'http://localhost:5000');
+      console.log('🔗 Server URL:', process.env.REACT_APP_API_URL || 'http://localhost:5000');
       setIsConnected(true);
     });
 
@@ -89,7 +89,7 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on('connect_error', (error) => {
       console.error('🚨 Socket connection error:', error);
-      console.error('🔗 Attempted URL:', process.env.REACT_APP_SERVER_URL || 'http://localhost:5000');
+      console.error('🔗 Attempted URL:', process.env.REACT_APP_API_URL || 'http://localhost:5000');
       setIsConnected(false);
     });
 
