@@ -59,7 +59,7 @@ const sendBugReportEmail = async (bugData) => {
 
     const htmlContent = `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-        <h2>🐛 Bug Report: ${bugData.title}</h2>
+        <h2>Bug Report: ${bugData.title}</h2>
         <p><strong>Severity:</strong> ${severityLabels[bugData.severity || 'medium']}</p>
         <div style="background:#fff;padding:12px;margin:8px 0;border-radius:6px;border-left:6px solid ${severityColors[bugData.severity || 'medium']};">
           <p><strong>Description:</strong></p>
@@ -74,15 +74,6 @@ const sendBugReportEmail = async (bugData) => {
         </div>
       </div>
     `;
-
-    // Verify transporter connectivity before attempting to send. This helps surface auth/connection issues early.
-    try {
-      await transporter.verify();
-      console.log('🔎 Transporter verification succeeded');
-    } catch (verifyErr) {
-      console.error('❌ Transporter verification failed:', verifyErr);
-      return { success: false, error: `transporter-verify-failed: ${verifyErr.message}` };
-    }
 
     const adminTo = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || 'fun2begin8988@gmail.com';
     const mailOptions = {
