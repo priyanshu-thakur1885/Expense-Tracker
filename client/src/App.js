@@ -16,6 +16,7 @@ import AddExpense from './pages/AddExpense';
 import EditExpense from './pages/EditExpense';
 import Analytics from './pages/Analytics';
 import Assistant from './pages/Assistant';
+import AssistantChat from './pages/AssistantChat';
 import Profile from './pages/Profile';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
@@ -45,7 +46,9 @@ function App() {
                 <Route path="add-expense" element={<AddExpense />} />
                 <Route path="edit-expense/:id" element={<EditExpense />} />
                 <Route path="analytics" element={<Analytics />} />
-                <Route path="assistant" element={<Assistant />} />
+                <Route path="assistant" element={<Assistant />}>
+                  <Route path="chat" element={<AssistantChat />} />
+                </Route>
                 <Route path="profile" element={<Profile />} />
                 <Route path="admin" element={<AdminDashboard />} />
               </Route>
