@@ -10,6 +10,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
 import notificationService from '../services/notificationService';
 import axios from 'axios';
@@ -19,6 +20,7 @@ import FloatingChat from '../components/FloatingChat';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const notifications = useNotifications();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,7 @@ const Dashboard = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/add-expense')}
               className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center space-x-2 transition-colors duration-200"
             >
               <Plus className="w-5 h-5" />
@@ -310,7 +313,7 @@ const Dashboard = () => {
             <p className="text-gray-500 dark:text-gray-400 mb-4">
               No expenses recorded yet
             </p>
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={() => navigate('/add-expense')}>
               Add Your First Expense
             </button>
           </div>
