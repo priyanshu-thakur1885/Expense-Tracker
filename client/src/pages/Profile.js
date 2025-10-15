@@ -19,7 +19,6 @@ import notificationService from '../services/notificationService';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
-import axios from 'axios';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
