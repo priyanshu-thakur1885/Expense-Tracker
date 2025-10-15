@@ -81,6 +81,10 @@ router.post('/verify', async (req, res) => {
     }
 
     const jwt = require('jsonwebtoken');
+    // Debug: log token length and prefix to diagnose malformed tokens (not the full token)
+    try {
+      console.log('Auth verify: token length', token.length, 'prefix', token.substring(0, 12));
+    } catch (_) {}
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     const user = await User.findById(decoded.userId).select('-__v');
     
