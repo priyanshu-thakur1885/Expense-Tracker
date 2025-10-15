@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import AddExpense from './pages/AddExpense';
+import EditExpense from './pages/EditExpense';
 import Analytics from './pages/Analytics';
 import Profile from './pages/Profile';
 import AuthCallback from './pages/AuthCallback';
@@ -41,6 +42,7 @@ function App() {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="expenses" element={<Expenses />} />
                 <Route path="add-expense" element={<AddExpense />} />
+                <Route path="edit-expense/:id" element={<EditExpense />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="admin" element={<AdminDashboard />} />
