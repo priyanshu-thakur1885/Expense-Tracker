@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -9,7 +9,11 @@ const AuthCallback = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  const hasHandled = useRef(false);
+
   useEffect(() => {
+    if (hasHandled.current) return; // prevent multiple executions
+    hasHandled.current = true;
     const handleAuthCallback = async () => {
       const token = searchParams.get('token');
       const error = searchParams.get('error');
