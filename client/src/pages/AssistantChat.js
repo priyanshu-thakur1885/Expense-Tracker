@@ -15,40 +15,35 @@ const AssistantChat = () => {
 		setInput('');
 		setLoading(true);
 
-		const source = new EventSource(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/ai/chat`, { withCredentials: true });
-		streamRef.current = source;
-
-		source.onopen = () => {
-			// POST body is not supported by EventSource; we can fallback to fetch+readable if needed.
-			source.close();
-			// Fallback: use fetch streaming
-			fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/ai/chat`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message: userMsg.content })
-			}).then(async (resp) => {
-				if (!resp.body) throw new Error('No stream');
-				const reader = resp.body.getReader();
-				const decoder = new TextDecoder('utf-8');
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					const chunk = decoder.decode(value);
-					setMessages(prev => {
-						const copy = [...prev];
-						const last = copy[copy.length - 1];
-						last.content += chunk;
-						return copy;
-					});
-				}
-			}).catch(() => {
-				setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: 'Sorry, I had trouble responding.' }]);
-			}).finally(() => setLoading(false));
-		};
-
-		source.onerror = () => {
-			source.close();
-		};
+    const token = localStorage.getItem('token');
+    fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ message: userMsg.content })
+    }).then(async (resp) => {
+      if (!resp.ok) throw new Error('Request failed');
+      if (!resp.body) throw new Error('No stream');
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        // Server sends lines prefixed with "data: ", strip if present
+        const cleaned = chunk.replace(/(^|\n)data:\s?/g, '$1');
+        setMessages(prev => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+          last.content += cleaned;
+          return copy;
+        });
+      }
+    }).catch(() => {
+      setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: 'Sorry, I had trouble responding.' }]);
+    }).finally(() => setLoading(false));
 	};
 
 	useEffect(() => () => {
