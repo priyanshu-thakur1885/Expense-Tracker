@@ -1,6 +1,7 @@
 const express = require('express');
 const Expense = require('../models/Expense');
 const { authenticateToken } = require('../middleware/auth');
+const fetch = require('node-fetch');
 
 const router = express.Router();
 
@@ -114,5 +115,76 @@ router.get('/suggestions', authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
+
+// ---- Streaming AI Chat (SSE) ----
+router.post('/chat', authenticateToken, async (req, res) => {
+	try {
+		if (!process.env.HUGGINGFACE_API_KEY) {
+			return res.status(503).json({ message: 'AI not configured' });
+		}
+
+		const { message, context } = req.body || {};
+		if (!message || typeof message !== 'string') {
+			return res.status(400).json({ message: 'Message is required' });
+		}
+
+		res.setHeader('Content-Type', 'text/event-stream');
+		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Connection', 'keep-alive');
+		res.flushHeaders();
+
+		const sysPrompt = `You are a helpful finance assistant for a campus expense tracker. Be concise, proactive, and suggest budgeting tips, category optimizations, and habits. If the user asks about their data, refer to provided context only.`;
+
+		const endpoint = `https://api-inference.huggingface.co/models/${process.env.HUGGINGFACE_MODEL || 'HuggingFaceH4/zephyr-7b-beta'}`;
+		const payload = {
+			inputs: `${sysPrompt}\nUser: ${message}\nAssistant:`,
+			parameters: { max_new_tokens: 400, temperature: 0.7, return_full_text: false }
+		};
+
+		const resp = await fetch(endpoint, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`
+			},
+			body: JSON.stringify(payload)
+		});
+
+		if (!resp.ok || !resp.body) {
+			res.write(`event: error\n`);
+			res.write(`data: ${JSON.stringify({ message: 'AI request failed' })}\n\n`);
+			return res.end();
+		}
+
+		// HF standard responses (non-streamed): array with generated_text or text fields
+		const data = await resp.json();
+		let text = '';
+		if (Array.isArray(data) && data[0]) {
+			text = data[0].generated_text || data[0].text || '';
+		} else if (data.generated_text || data.text) {
+			text = data.generated_text || data.text;
+		} else {
+			text = JSON.stringify(data);
+		}
+
+		// Simulate streaming by chunking the text
+		const chunkSize = 60;
+		for (let i = 0; i < text.length; i += chunkSize) {
+			const part = text.slice(i, i + chunkSize);
+			res.write(`data: ${part}\n\n`);
+			await new Promise(r => setTimeout(r, 20));
+		}
+
+		res.write('event: end\n');
+		res.write('data: [DONE]\n\n');
+		res.end();
+	} catch (e) {
+		try {
+			res.write(`event: error\n`);
+			res.write(`data: ${JSON.stringify({ message: 'AI error' })}\n\n`);
+		} catch (_) {}
+		res.end();
+	}
+});
 
 
