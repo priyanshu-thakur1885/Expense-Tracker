@@ -34,7 +34,8 @@ const BugReport = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/bug-report', {
+      const API_BASE = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${API_BASE}/api/bug-report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,6 +66,8 @@ const BugReport = ({ isOpen, onClose }) => {
           });
         }, 2000);
       } else {
+        const txt = await response.text();
+        console.error('Bug report response error:', txt);
         throw new Error('Failed to submit bug report');
       }
     } catch (error) {

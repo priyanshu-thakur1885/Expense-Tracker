@@ -16,7 +16,7 @@ const requireAdmin = (req, res, next) => {
 };
 
 // Get all users with their spending statistics
-router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/users', authenticateToken, requireAdmin, async (req, res) => {1
   try {
     console.log('Admin users request from:', req.user.email);
     console.log('User object:', {
