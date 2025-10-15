@@ -18,13 +18,12 @@ const createTransporter = () => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER || 'fun2begin8988@gmail.com',
         pass: process.env.EMAIL_PASS
-      },
-      tls: { rejectUnauthorized: false }
+      }
     });
     console.log('✅ Email transporter created');
     return transporter;
