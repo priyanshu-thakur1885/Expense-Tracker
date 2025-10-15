@@ -4,6 +4,9 @@ const User = require('../models/User');
 
 const router = express.Router();
 
+const ExcelJS = require('exceljs');
+
+
 // Get user profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
@@ -204,3 +207,79 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
+
+// Export expenses as XLSX
+router.get('/export', authenticateToken, async (req, res) => {
+  try {
+    const Expense = require('../models/Expense');
+
+    // Fetch all expenses for the user
+    const expenses = await Expense.find({ userId: req.user._id }).sort({ date: -1 });
+
+    // Prepare monthly summary for the last 12 months
+    const now = new Date();
+    const monthlyMap = {};
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyMap[key] = { year: d.getFullYear(), month: d.getMonth() + 1, total: 0 };
+    }
+
+    expenses.forEach(exp => {
+      const dt = new Date(exp.date);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyMap[key]) {
+        monthlyMap[key] = { year: dt.getFullYear(), month: dt.getMonth() + 1, total: 0 };
+      }
+      monthlyMap[key].total += exp.amount;
+    });
+
+    // Create workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = req.user.name || req.user.email;
+    workbook.created = new Date();
+
+    // Expenses sheet
+    const sheet = workbook.addWorksheet('Expenses');
+    sheet.columns = [
+      { header: 'Date', key: 'date', width: 20 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Food Court', key: 'foodCourt', width: 25 },
+      { header: 'Amount', key: 'amount', width: 15 }
+    ];
+
+    expenses.forEach(exp => {
+      sheet.addRow({
+        date: new Date(exp.date).toLocaleString(),
+        description: exp.description || exp.item || exp.title || '',
+        category: exp.category || '',
+        foodCourt: exp.foodCourt || '',
+        amount: exp.amount
+      });
+    });
+
+    // Monthly Summary sheet
+    const summary = workbook.addWorksheet('Monthly Summary');
+    summary.columns = [
+      { header: 'Year-Month', key: 'ym', width: 15 },
+      { header: 'Total Spent', key: 'total', width: 15 }
+    ];
+
+    // Sort keys descending (most recent first)
+    const keys = Object.keys(monthlyMap).sort((a, b) => b.localeCompare(a));
+    keys.forEach(k => {
+      summary.addRow({ ym: k, total: monthlyMap[k].total });
+    });
+
+    // Write workbook to buffer
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=expenses_${req.user._id}.xlsx`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Export error:', error);
+    res.status(500).json({ message: 'Error exporting data' });
+  }
+});

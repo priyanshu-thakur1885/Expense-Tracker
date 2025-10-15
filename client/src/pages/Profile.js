@@ -19,6 +19,7 @@ import notificationService from '../services/notificationService';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import axios from 'axios';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -117,6 +118,40 @@ const Profile = () => {
     } catch (error) {
       console.error('Error updating budget:', error);
       toast.error('Failed to update budget');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const API_BASE = process.env.REACT_APP_API_URL || '';
+
+  const handleExport = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/api/user/export`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(txt || 'Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `expenses_export_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Export started — downloading file');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export data');
     } finally {
       setLoading(false);
     }
@@ -439,7 +474,7 @@ const Profile = () => {
         </h2>
         
         <div className="space-y-3">
-          <button className="w-full text-left p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg hover:bg-warning-100 dark:hover:bg-warning-900/30 transition-colors duration-200">
+          <button onClick={handleExport} className="w-full text-left p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg hover:bg-warning-100 dark:hover:bg-warning-900/30 transition-colors duration-200">
             <p className="font-medium text-warning-800 dark:text-warning-300">Export Data</p>
             <p className="text-sm text-warning-600 dark:text-warning-400">
               Download your expense data as CSV
