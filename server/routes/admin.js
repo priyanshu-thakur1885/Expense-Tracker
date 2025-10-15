@@ -171,6 +171,43 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// Get recent expenses with user info (admin)
+router.get('/expenses', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { limit = 50, page = 1, sort = 'desc' } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const expenses = await Expense.aggregate([
+      { $sort: { date: sort === 'asc' ? 1 : -1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $project: {
+        _id: 1,
+        item: 1,
+        amount: 1,
+        category: 1,
+        foodCourt: 1,
+        date: 1,
+        description: 1,
+        tags: 1,
+        isRecurring: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        userId: 1,
+        userName: '$user.name',
+        userEmail: '$user.email'
+      } }
+    ]);
+
+    res.json({ success: true, expenses, count: expenses.length });
+  } catch (error) {
+    console.error('Admin expenses error:', error);
+    res.status(500).json({ message: 'Error fetching expenses' });
+  }
+});
+
 // Send notification to all users
 router.post('/notifications/send', authenticateToken, requireAdmin, async (req, res) => {
   try {
