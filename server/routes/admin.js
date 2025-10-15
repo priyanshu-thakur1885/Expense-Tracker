@@ -38,6 +38,7 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
         email: u.email,
         isActive: u.isActive
       })));
+    }
     
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
