@@ -241,8 +241,9 @@ router.get('/export', authenticateToken, async (req, res) => {
 
     // Expenses sheet
     const sheet = workbook.addWorksheet('Expenses');
+    // Use an Excel-friendly date column and store actual Date objects so Excel displays real date/time
     sheet.columns = [
-      { header: 'Date', key: 'date', width: 20 },
+      { header: 'Date', key: 'date', width: 20, style: { numFmt: 'yyyy-mm-dd hh:mm:ss' } },
       { header: 'Description', key: 'description', width: 40 },
       { header: 'Category', key: 'category', width: 20 },
       { header: 'Food Court', key: 'foodCourt', width: 25 },
@@ -250,8 +251,10 @@ router.get('/export', authenticateToken, async (req, res) => {
     ];
 
     expenses.forEach(exp => {
+      // Ensure we pass a real Date object to ExcelJS
+      const dateVal = exp.date ? new Date(exp.date) : new Date();
       sheet.addRow({
-        date: new Date(exp.date).toLocaleString(),
+        date: dateVal,
         description: exp.description || exp.item || exp.title || '',
         category: exp.category || '',
         foodCourt: exp.foodCourt || '',
