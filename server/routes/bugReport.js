@@ -88,10 +88,9 @@ const sendBugReportEmail = async (bugData) => {
     const mailOptions = {
       from: process.env.EMAIL_USER || 'fun2begin8988@gmail.com',
       to: adminTo,
-      subject: `🐛 Bug Report: ${bugData.title}`,
+      subject: `Bug Report: ${bugData.title}`,
       html: htmlContent,
-      text: `Bug Report: ${bugData.title}\nSeverity: ${bugData.severity || 'medium'}\n\n${bugData.description}\n\nURL: ${bugData.url || 'unknown'}\nReporter: ${bugData.userName || 'Unknown'} <${bugData.userEmail || ''}>\n`,
-      replyTo: bugData.userEmail || undefined
+      text: `Bug Report: ${bugData.title}\nSeverity: ${bugData.severity || 'medium'}\n\n${bugData.description}\n\nURL: ${bugData.url || 'unknown'}\nReporter: ${bugData.userName || 'Unknown'} <${bugData.userEmail || ''}>\n`
     };
 
     console.log(`📧 Sending bug report email to ${adminTo} ...`);
