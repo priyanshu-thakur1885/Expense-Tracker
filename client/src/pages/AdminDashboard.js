@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const API_BASE = process.env.REACT_APP_API_URL || '';
   const [isPinVerified, setIsPinVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
@@ -51,27 +52,40 @@ const AdminDashboard = () => {
   const fetchAdminData = async () => {
     try {
       setLoading(true);
+      console.log('Fetching admin data with token:', localStorage.getItem('token'));
+      
       const [usersRes, statsRes] = await Promise.all([
-        fetch('/api/admin/users', {
+        fetch(`${API_BASE}/api/admin/users`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }),
-        fetch('/api/admin/stats', {
+        fetch(`${API_BASE}/api/admin/stats`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         })
       ]);
 
+      console.log('Users Response Status:', usersRes.status);
+      console.log('Stats Response Status:', statsRes.status);
+
       if (usersRes.ok) {
         const usersData = await usersRes.json();
+        console.log('Users Data:', usersData);
         setUsers(usersData.users || []);
+      } else {
+        const errorText = await usersRes.text();
+        console.error('Users Response Error:', errorText);
       }
 
       if (statsRes.ok) {
         const statsData = await statsRes.json();
+        console.log('Stats Data:', statsData);
         setStats(statsData.stats || null);
+      } else {
+        const errorText = await statsRes.text();
+        console.error('Stats Response Error:', errorText);
       }
     } catch (error) {
       console.error('Error fetching admin data:', error);
@@ -92,7 +106,7 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch('/api/admin/notifications/send', {
+      const response = await fetch(`${API_BASE}/api/admin/notifications/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +136,7 @@ const AdminDashboard = () => {
 
   const fetchReplies = async () => {
     try {
-      const response = await fetch('/api/admin/notifications/replies', {
+      const response = await fetch(`${API_BASE}/api/admin/notifications/replies`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -140,7 +154,7 @@ const AdminDashboard = () => {
 
   const getUserDetails = async (userId) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -36,6 +36,7 @@ const NotificationCenter = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [adminNotifications, setAdminNotifications] = useState([]);
   const [loadingAdminNotifications, setLoadingAdminNotifications] = useState(false);
+  const API_BASE = process.env.REACT_APP_API_URL || '';
 
   // Calculate total unread count including admin notifications
   const totalUnreadCount = unreadCount + adminNotifications.filter(n => !n.isRead).length;
@@ -46,7 +47,7 @@ const NotificationCenter = () => {
     
     try {
       setLoadingAdminNotifications(true);
-      const response = await fetch('/api/admin/notifications', {
+      const response = await fetch(`${API_BASE}/api/admin/notifications`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -66,7 +67,7 @@ const NotificationCenter = () => {
   // Mark admin notification as read
   const markAdminNotificationAsRead = async (notificationId) => {
     try {
-      const response = await fetch(`/api/admin/notifications/${notificationId}/read`, {
+      const response = await fetch(`${API_BASE}/api/admin/notifications/${notificationId}/read`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
