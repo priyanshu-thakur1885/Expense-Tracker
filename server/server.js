@@ -17,7 +17,6 @@ const budgetRoutes = require('./routes/budget');
 const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
 const bugReportRoutes = require('./routes/bugReport');
-const aiRoutes = require('./routes/ai');
 
 // Import passport configuration
 require('./config/passport');
@@ -99,7 +98,7 @@ app.use('/api/budget', budgetRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bug-report', bugReportRoutes);
-app.use('/api/ai', aiRoutes);
+// AI routes removed
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -11,8 +11,7 @@ import {
   X,
   Crown,
   Bug,
-  Lightbulb,
-  MessageCircle
+  // Lightbulb, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -30,8 +29,7 @@ const Sidebar = () => {
     { name: 'Expenses', href: '/expenses', icon: Receipt },
     { name: 'Add Expense', href: '/add-expense', icon: Plus },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Assistant', href: '/assistant', icon: Lightbulb },
-    { name: 'AI Chat', href: '/assistant/chat', icon: MessageCircle },
+    // Assistant removed
     { name: 'Profile', href: '/profile', icon: User },
   ];
 
