@@ -18,12 +18,16 @@ const requireAdmin = (req, res, next) => {
 // Get all users with their spending statistics
 router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    console.log('Admin users request from:', req.user.email);
+    
     const users = await User.find({ isActive: true }).select('name email photo createdAt');
+    console.log('Found users:', users.length);
     
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
         // Get total spending for this user
         const expenses = await Expense.find({ userId: user._id });
+        console.log(`Expenses for user ${user.email}:`, expenses.length);
         const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
         const totalExpenses = expenses.length;
         

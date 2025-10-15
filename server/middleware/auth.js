@@ -30,8 +30,14 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid or inactive user' });
     }
 
-    // Add admin role to user object
+    // Add admin role to user object and log debugging info
     user.isAdmin = decoded.isAdmin || user.email === 'fun2begin8988@gmail.com';
+    console.log('Auth Debug:', {
+      userId: user._id,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      decodedToken: decoded
+    });
     req.user = user;
     next();
   } catch (error) {
