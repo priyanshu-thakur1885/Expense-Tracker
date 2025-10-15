@@ -79,9 +79,17 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/expense-tracker')
-.then(() => console.log('✅ MongoDB connected successfully'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+    // Log the current database name to verify connection
+    console.log('Connected to database:', mongoose.connection.name);
+    // List all collections
+    mongoose.connection.db.listCollections().toArray().then(collections => {
+      console.log('Available collections:', collections.map(c => c.name));
+    });
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/api/auth', authRoutes);

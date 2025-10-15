@@ -19,9 +19,25 @@ const requireAdmin = (req, res, next) => {
 router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
     console.log('Admin users request from:', req.user.email);
+    console.log('User object:', {
+      id: req.user._id,
+      isAdmin: req.user.isAdmin,
+      name: req.user.name
+    });
     
+    // Log the query we're about to execute
+    console.log('Executing User.find query with isActive: true');
     const users = await User.find({ isActive: true }).select('name email photo createdAt');
     console.log('Found users:', users.length);
+    
+    // If no users found, let's check if we can find ANY users
+    if (users.length === 0) {
+      const allUsers = await User.find({}).select('name email isActive');
+      console.log('Total users in database:', allUsers.length);
+      console.log('Users:', allUsers.map(u => ({
+        email: u.email,
+        isActive: u.isActive
+      })));
     
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
