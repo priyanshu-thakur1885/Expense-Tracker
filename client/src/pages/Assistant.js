@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Lightbulb, RefreshCw, ArrowRight, MessageCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { fetchSuggestions } from '../services/aiService';
 import ProtectedRoute from '../components/ProtectedRoute';
 
@@ -64,6 +64,7 @@ const AssistantPage = () => {
 								</div>
 							))}
 						</div>
+						<Outlet />
 					</div>
 				)}
 			</div>
