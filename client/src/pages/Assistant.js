@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Lightbulb, RefreshCw, ArrowRight } from 'lucide-react';
+import { Lightbulb, RefreshCw, ArrowRight, MessageCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { fetchSuggestions } from '../services/aiService';
 import ProtectedRoute from '../components/ProtectedRoute';
 
@@ -33,9 +34,14 @@ const AssistantPage = () => {
 						<Lightbulb className="w-6 h-6 text-yellow-500" />
 						<h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Assistant</h1>
 					</div>
-					<button onClick={load} className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600">
+					<div className="flex items-center gap-2">
+						<Link to="/assistant/chat" className="inline-flex items-center px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+							<MessageCircle className="w-4 h-4 mr-2" /> Open AI Chat
+						</Link>
+						<button onClick={load} className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600">
 						<RefreshCw className="w-4 h-4 mr-2" /> Refresh
-					</button>
+						</button>
+					</div>
 				</div>
 
 				{loading ? (
