@@ -1,7 +1,6 @@
 const express = require('express');
 const Expense = require('../models/Expense');
 const { authenticateToken } = require('../middleware/auth');
-const fetch = require('node-fetch');
 
 const router = express.Router();
 
