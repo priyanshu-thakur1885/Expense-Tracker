@@ -22,6 +22,22 @@ class SocketService {
           return next(new Error('Authentication error: No token provided'));
         }
 
+        // Allow demo mode token without JWT verification
+        if (token === 'demo-token-123') {
+          const demoUser = {
+            _id: '507f1f77bcf86cd799439011',
+            name: 'Demo Student',
+            email: 'demo@lpu.in',
+            photo: 'https://via.placeholder.com/150/3b82f6/ffffff?text=DS',
+            isActive: true
+          };
+
+          socket.userId = demoUser._id;
+          socket.user = demoUser;
+          socket.isAdmin = false;
+          return next();
+        }
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
         const user = await User.findById(decoded.userId).select('-__v');
         
