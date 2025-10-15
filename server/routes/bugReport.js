@@ -76,18 +76,29 @@ const sendBugReportEmail = async (bugData) => {
       </div>
     `;
 
+    // Verify transporter connectivity before attempting to send. This helps surface auth/connection issues early.
+    try {
+      await transporter.verify();
+      console.log('🔎 Transporter verification succeeded');
+    } catch (verifyErr) {
+      console.error('❌ Transporter verification failed:', verifyErr);
+      return { success: false, error: `transporter-verify-failed: ${verifyErr.message}` };
+    }
+
+    const adminTo = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || 'fun2begin8988@gmail.com';
     const mailOptions = {
       from: process.env.EMAIL_USER || 'fun2begin8988@gmail.com',
-      to: process.env.EMAIL_USER || 'fun2begin8988@gmail.com',
+      to: adminTo,
       subject: `🐛 Bug Report: ${bugData.title}`,
       html: htmlContent,
-      text: `Bug Report: ${bugData.title}\nSeverity: ${bugData.severity || 'medium'}\n\n${bugData.description}\n\nURL: ${bugData.url || 'unknown'}\nReporter: ${bugData.userName || 'Unknown'} <${bugData.userEmail || ''}>\n` 
+      text: `Bug Report: ${bugData.title}\nSeverity: ${bugData.severity || 'medium'}\n\n${bugData.description}\n\nURL: ${bugData.url || 'unknown'}\nReporter: ${bugData.userName || 'Unknown'} <${bugData.userEmail || ''}>\n`,
+      replyTo: bugData.userEmail || undefined
     };
 
-    console.log('📧 Sending bug report email...');
+    console.log(`📧 Sending bug report email to ${adminTo} ...`);
     const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Bug report email sent:', result && result.messageId);
-    return { success: true, messageId: result && result.messageId };
+    console.log('✅ Bug report email sent:', result && result.messageId, 'response:', result && result.response);
+    return { success: true, messageId: result && result.messageId, response: result && result.response };
   } catch (err) {
     console.error('❌ Error sending bug report email:', err);
     return { success: false, error: err.message || String(err) };
