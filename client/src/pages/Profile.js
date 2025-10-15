@@ -26,6 +26,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [budget, setBudget] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteName, setDeleteName] = useState('');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     monthlyLimit: 4000,
@@ -480,12 +482,55 @@ const Profile = () => {
             </p>
           </button>
           
-          <button className="w-full text-left p-4 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg hover:bg-danger-100 dark:hover:bg-danger-900/30 transition-colors duration-200">
+          <button onClick={() => setShowDeleteModal(true)} className="w-full text-left p-4 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg hover:bg-danger-100 dark:hover:bg-danger-900/30 transition-colors duration-200">
             <p className="font-medium text-danger-800 dark:text-danger-300">Delete Account</p>
             <p className="text-sm text-danger-600 dark:text-danger-400">
               Permanently delete your account and all data
             </p>
           </button>
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Confirm Account Deletion</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Type your full name (<span className="font-medium">{user?.name}</span>) to permanently delete your account.</p>
+                <input type="text" value={deleteName} onChange={(e) => setDeleteName(e.target.value)} className="input w-full mb-4" placeholder="Enter your full name" />
+                <div className="flex justify-end space-x-2">
+                  <button onClick={() => { setShowDeleteModal(false); setDeleteName(''); }} className="btn btn-secondary">Cancel</button>
+                  <button onClick={async () => {
+                    if (deleteName.trim() !== user?.name) {
+                      toast.error('Name does not match');
+                      return;
+                    }
+                    setLoading(true);
+                    try {
+                      const resp = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/user/account`, {
+                        method: 'DELETE',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({ confirmName: deleteName.trim() })
+                      });
+                      if (resp.ok) {
+                        toast.success('Account deleted');
+                        // Remove local session and redirect
+                        localStorage.removeItem('token');
+                        window.location.href = '/';
+                      } else {
+                        const txt = await resp.text();
+                        toast.error(txt || 'Failed to delete account');
+                      }
+                    } catch (err) {
+                      console.error('Delete account error:', err);
+                      toast.error('Failed to delete account');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }} className="btn btn-danger">Delete</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

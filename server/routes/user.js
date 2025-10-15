@@ -63,13 +63,36 @@ router.put('/preferences', authenticateToken, async (req, res) => {
   }
 });
 
-// Delete user account
+// Permanently delete user account and all associated data
 router.delete('/account', authenticateToken, async (req, res) => {
   try {
-    // Soft delete - mark as inactive
-    await User.findByIdAndUpdate(req.user._id, { isActive: false });
-    
-    res.json({ success: true, message: 'Account deactivated successfully' });
+    const { confirmName } = req.body || {};
+
+    // Require the user to send their exact name for confirmation
+    if (!confirmName || confirmName.trim() !== req.user.name) {
+      return res.status(400).json({ message: 'Please provide your full name to confirm account deletion' });
+    }
+
+    const userId = req.user._id;
+
+    // Remove related data
+    const Expense = require('../models/Expense');
+    const Budget = require('../models/Budget');
+    const Notification = require('../models/Notification');
+    const BugReport = require('../models/BugReport');
+
+    await Promise.all([
+      Expense.deleteMany({ userId }),
+      Budget.deleteMany({ userId }),
+      Notification.deleteMany({ $or: [ { sentByUserId: userId }, { specificUserIds: userId } ] }),
+      BugReport.deleteMany({ userId })
+    ]);
+
+    // Finally remove the user document
+    await User.findByIdAndDelete(userId);
+
+    // If sessions or other records exist, they should be cleaned up externally
+    res.json({ success: true, message: 'Account and all data deleted permanently' });
   } catch (error) {
     console.error('Delete account error:', error);
     res.status(500).json({ message: 'Error deleting account' });
