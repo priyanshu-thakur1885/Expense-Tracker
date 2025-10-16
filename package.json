@@ -25,6 +25,7 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
-    "mongodb": "4.1"
+    "mongodb": "4.1",
+    "multer": "^2.0.2"
   }
 }

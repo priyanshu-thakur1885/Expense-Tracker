@@ -20,14 +20,32 @@ const bugReportSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  expected: {
-    type: String,
-    trim: true
-  },
-  actual: {
-    type: String,
-    trim: true
-  },
+  attachments: [{
+    filename: {
+      type: String,
+      required: true
+    },
+    originalName: {
+      type: String,
+      required: true
+    },
+    mimetype: {
+      type: String,
+      required: true
+    },
+    size: {
+      type: Number,
+      required: true
+    },
+    data: {
+      type: Buffer,
+      required: true
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   // User information
   userEmail: {
     type: String,

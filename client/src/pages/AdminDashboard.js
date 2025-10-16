@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  TrendingUp, 
-  DollarSign, 
-  BarChart3, 
-  Send, 
+import {
+  Users,
+  TrendingUp,
+  DollarSign,
+  BarChart3,
+  Send,
   Eye,
   Crown,
   AlertCircle,
   CheckCircle,
   Info,
-  MessageCircle
+  MessageCircle,
+  Bug,
+  Filter,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import UserMessaging from '../components/UserMessaging';
 import AdminPinProtection from '../components/AdminPinProtection';
@@ -34,12 +38,28 @@ const AdminDashboard = () => {
   });
   const [replies, setReplies] = useState([]);
   const [showReplies, setShowReplies] = useState(false);
+  const [bugReports, setBugReports] = useState([]);
+  const [bugReportsLoading, setBugReportsLoading] = useState(false);
+  const [bugReportFilters, setBugReportFilters] = useState({
+    status: '',
+    severity: '',
+    page: 1,
+    limit: 20
+  });
+  const [selectedBugReport, setSelectedBugReport] = useState(null);
 
   useEffect(() => {
     if (isPinVerified) {
       fetchAdminData();
+      fetchBugReports();
     }
   }, [isPinVerified]);
+
+  useEffect(() => {
+    if (isPinVerified) {
+      fetchBugReports();
+    }
+  }, [bugReportFilters]);
 
   const handlePinCorrect = () => {
     setIsPinVerified(true);
@@ -152,6 +172,32 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchBugReports = async () => {
+    try {
+      setBugReportsLoading(true);
+      const queryParams = new URLSearchParams();
+      if (bugReportFilters.status) queryParams.append('status', bugReportFilters.status);
+      if (bugReportFilters.severity) queryParams.append('severity', bugReportFilters.severity);
+      queryParams.append('page', bugReportFilters.page);
+      queryParams.append('limit', bugReportFilters.limit);
+
+      const response = await fetch(`${API_BASE}/api/bug-report?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBugReports(data.bugReports || []);
+      }
+    } catch (error) {
+      console.error('Error fetching bug reports:', error);
+    } finally {
+      setBugReportsLoading(false);
+    }
+  };
+
   const getUserDetails = async (userId) => {
     try {
       const response = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
@@ -230,6 +276,7 @@ const AdminDashboard = () => {
             {[
               { id: 'overview', name: 'Overview', icon: BarChart3 },
               { id: 'users', name: 'Users', icon: Users },
+              { id: 'bug-reports', name: 'Bug Reports', icon: Bug },
               { id: 'messaging', name: 'Messaging', icon: MessageCircle },
               { id: 'notifications', name: 'Notifications', icon: Send }
             ].map((tab) => (
@@ -355,6 +402,122 @@ const AdminDashboard = () => {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bug Reports Tab */}
+        {activeTab === 'bug-reports' && (
+          <div className="space-y-6">
+            {/* Bug Reports List */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-gray-900">Bug Reports</h3>
+                  <div className="flex space-x-2">
+                    <select
+                      value={bugReportFilters.status}
+                      onChange={(e) => setBugReportFilters({ ...bugReportFilters, status: e.target.value })}
+                      className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                    >
+                      <option value="">All Status</option>
+                      <option value="open">Open</option>
+                      <option value="in-progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                    <select
+                      value={bugReportFilters.severity}
+                      onChange={(e) => setBugReportFilters({ ...bugReportFilters, severity: e.target.value })}
+                      className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                    >
+                      <option value="">All Severity</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reporter</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {bugReportsLoading ? (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                          <p className="mt-2 text-sm text-gray-500">Loading bug reports...</p>
+                        </td>
+                      </tr>
+                    ) : bugReports.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                          No bug reports found
+                        </td>
+                      </tr>
+                    ) : (
+                      bugReports.map((report) => (
+                        <tr key={report._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
+                              {report.title}
+                            </div>
+                            <div className="text-sm text-gray-500 max-w-xs truncate">
+                              {report.description}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              report.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                              report.severity === 'high' ? 'bg-orange-100 text-orange-800' :
+                              report.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {report.severity}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              report.status === 'open' ? 'bg-blue-100 text-blue-800' :
+                              report.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                              report.status === 'resolved' ? 'bg-green-100 text-green-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {report.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {report.userName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(report.reportedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => setSelectedBugReport(report)}
+                              className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -583,6 +746,142 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* Bug Report Details Modal */}
+        {selectedBugReport && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/4 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Bug Report Details</h3>
+                  <button
+                    onClick={() => setSelectedBugReport(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Header Info */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="text-xl font-bold text-gray-900 mb-2">{selectedBugReport.title}</h4>
+                      <div className="flex items-center space-x-4 mb-4">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          selectedBugReport.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                          selectedBugReport.severity === 'high' ? 'bg-orange-100 text-orange-800' :
+                          selectedBugReport.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {selectedBugReport.severity} priority
+                        </span>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          selectedBugReport.status === 'open' ? 'bg-blue-100 text-blue-800' :
+                          selectedBugReport.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                          selectedBugReport.status === 'resolved' ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {selectedBugReport.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right text-sm text-gray-500">
+                      <p>Reported: {new Date(selectedBugReport.reportedAt).toLocaleString()}</p>
+                      {selectedBugReport.lastUpdated && (
+                        <p>Updated: {new Date(selectedBugReport.lastUpdated).toLocaleString()}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <h5 className="font-medium text-gray-900 mb-2">Description</h5>
+                    <p className="text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">{selectedBugReport.description}</p>
+                  </div>
+
+                  {/* Steps to Reproduce */}
+                  {selectedBugReport.steps && (
+                    <div>
+                      <h5 className="font-medium text-gray-900 mb-2">Steps to Reproduce</h5>
+                      <p className="text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">{selectedBugReport.steps}</p>
+                    </div>
+                  )}
+
+                  {/* Attachments */}
+                  {selectedBugReport.attachments && selectedBugReport.attachments.length > 0 && (
+                    <div>
+                      <h5 className="font-medium text-gray-900 mb-2">Attachments</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedBugReport.attachments.map((attachment, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                {attachment.mimetype.startsWith('image/') ? (
+                                  <img
+                                    src={`${API_BASE}/api/bug-report/${selectedBugReport._id}/attachment/${attachment.filename}`}
+                                    alt={attachment.originalName}
+                                    className="w-12 h-12 object-cover rounded"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 bg-gray-300 rounded flex items-center justify-center">
+                                    <span className="text-xs text-gray-600">VIDEO</span>
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900 truncate max-w-32">
+                                    {attachment.originalName}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {(attachment.size / 1024).toFixed(1)} KB
+                                  </p>
+                                </div>
+                              </div>
+                              <a
+                                href={`${API_BASE}/api/bug-report/${selectedBugReport._id}/attachment/${attachment.filename}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reporter Info */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h5 className="font-medium text-gray-900 mb-2">Reporter Information</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Name: <span className="font-medium">{selectedBugReport.userName}</span></p>
+                        <p className="text-sm text-gray-600">Email: <span className="font-medium">{selectedBugReport.userEmail}</span></p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">URL: <span className="font-medium break-all">{selectedBugReport.url}</span></p>
+                        <p className="text-sm text-gray-600">User Agent: <span className="font-medium break-all">{selectedBugReport.userAgent}</span></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Admin Notes */}
+                  {selectedBugReport.adminNotes && (
+                    <div className="bg-yellow-50 p-4 rounded-lg">
+                      <h5 className="font-medium text-gray-900 mb-2">Admin Notes</h5>
+                      <p className="text-gray-700 whitespace-pre-wrap">{selectedBugReport.adminNotes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* User Details Modal */}
         {selectedUser && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -600,7 +899,7 @@ const AdminDashboard = () => {
                     </svg>
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center space-x-4">
                     <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
@@ -618,7 +917,7 @@ const AdminDashboard = () => {
                       <p className="text-sm text-gray-400">Joined: {new Date(selectedUser.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500">Total Spent</p>
@@ -629,7 +928,7 @@ const AdminDashboard = () => {
                       <p className="text-2xl font-bold text-gray-900">{selectedUser.totalExpenses}</p>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <h5 className="font-medium text-gray-900">Recent Expenses</h5>
                     <div className="space-y-2 max-h-40 overflow-y-auto">

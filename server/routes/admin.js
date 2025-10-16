@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Expense = require('../models/Expense');
 const Budget = require('../models/Budget');
 const Notification = require('../models/Notification');
+const BugReport = require('../models/BugReport');
 
 const router = express.Router();
 
@@ -436,6 +437,41 @@ router.get('/notifications/replies', authenticateToken, requireAdmin, async (req
   } catch (error) {
     console.error('Get replies error:', error);
     res.status(500).json({ message: 'Error fetching replies' });
+  }
+});
+
+// Get bug reports (admin)
+router.get('/bug-reports', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { status, severity, page = 1, limit = 20 } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (severity) filter.severity = severity;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const bugReports = await BugReport.find(filter).sort({ reportedAt: -1 }).skip(skip).limit(parseInt(limit)).select('-attachments.data');
+    const total = await BugReport.countDocuments(filter);
+    return res.json({ success: true, bugReports, pagination: { current: parseInt(page), total: Math.ceil(total / parseInt(limit)), count: bugReports.length, totalCount: total } });
+  } catch (err) {
+    console.error('Error fetching bug reports:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Update bug report status (admin)
+router.put('/bug-reports/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, priority, adminNotes, assignedTo } = req.body;
+    const updateData = { lastUpdated: new Date() };
+    if (priority) updateData.priority = priority;
+    if (adminNotes) updateData.adminNotes = adminNotes;
+    if (assignedTo) updateData.assignedTo = assignedTo;
+    if (status === 'resolved') updateData.resolvedAt = new Date();
+    const bugReport = await BugReport.findByIdAndUpdate(id, updateData, { new: true });
+    if (!bugReport) return res.status(404).json({ success: false, message: 'Bug report not found' });
+    return res.json({ success: true, message: 'Bug report updated', bugReport });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

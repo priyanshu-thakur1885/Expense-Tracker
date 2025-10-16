@@ -1,7 +1,25 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
+const multer = require('multer');
 const BugReport = require('../models/BugReport');
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and videos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image and video files are allowed'), false);
+    }
+  }
+});
 
 // Create transporter for sending emails (returns null if not configured)
 const createTransporter = () => {
@@ -95,7 +113,7 @@ const sendBugReportEmail = async (bugData) => {
 };
 
 // POST /api/bug-report
-router.post('/', async (req, res) => {
+router.post('/', upload.array('attachments', 5), async (req, res) => {
   try {
     console.log('🐛 Bug report received:', req.body && { title: req.body.title, user: req.body.userEmail });
     const bugData = req.body || {};
@@ -104,13 +122,26 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Title and description are required' });
     }
 
+    // Process uploaded files
+    const attachments = [];
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        attachments.push({
+          filename: `${Date.now()}-${file.originalname}`,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          data: file.buffer
+        });
+      });
+    }
+
     const bugReport = new BugReport({
       title: bugData.title,
       description: bugData.description,
       severity: bugData.severity || 'medium',
       steps: bugData.steps || '',
-      expected: bugData.expected || '',
-      actual: bugData.actual || '',
+      attachments: attachments,
       userEmail: bugData.userEmail || 'unknown@example.com',
       userName: bugData.userName || 'Unknown User',
       userPhoto: bugData.userPhoto || '',
@@ -122,7 +153,7 @@ router.post('/', async (req, res) => {
     let saved;
     try {
       saved = await bugReport.save();
-      console.log('✅ Bug report saved to DB with id:', saved._id);
+      console.log('✅ Bug report saved to DB with id:', saved._id, 'attachments:', attachments.length);
     } catch (saveErr) {
       console.error('❌ Failed to save bug report:', saveErr);
       return res.status(500).json({ success: false, message: 'Failed to save bug report', error: saveErr.message });
@@ -152,11 +183,35 @@ router.get('/', async (req, res) => {
     if (status) filter.status = status;
     if (severity) filter.severity = severity;
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const bugReports = await BugReport.find(filter).sort({ reportedAt: -1 }).skip(skip).limit(parseInt(limit)).select('-__v');
+    const bugReports = await BugReport.find(filter).sort({ reportedAt: -1 }).skip(skip).limit(parseInt(limit)).select('-attachments.data');
     const total = await BugReport.countDocuments(filter);
     return res.json({ success: true, bugReports, pagination: { current: parseInt(page), total: Math.ceil(total / parseInt(limit)), count: bugReports.length, totalCount: total } });
   } catch (err) {
     console.error('Error fetching bug reports:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// GET /api/bug-report/:id/attachment/:filename - serve attachment file
+router.get('/:id/attachment/:filename', async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+    const bugReport = await BugReport.findById(id);
+
+    if (!bugReport) {
+      return res.status(404).json({ success: false, message: 'Bug report not found' });
+    }
+
+    const attachment = bugReport.attachments.find(att => att.filename === filename);
+    if (!attachment) {
+      return res.status(404).json({ success: false, message: 'Attachment not found' });
+    }
+
+    res.setHeader('Content-Type', attachment.mimetype);
+    res.setHeader('Content-Disposition', `inline; filename="${attachment.originalName}"`);
+    res.send(attachment.data);
+  } catch (err) {
+    console.error('Error serving attachment:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
