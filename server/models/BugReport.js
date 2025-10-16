@@ -107,6 +107,9 @@ const bugReportSchema = new mongoose.Schema({
 bugReportSchema.index({ status: 1, severity: 1, reportedAt: -1 });
 bugReportSchema.index({ userEmail: 1, reportedAt: -1 });
 
+// Add compound index for Atlas Data Explorer performance
+bugReportSchema.index({ reportedAt: -1, status: 1 });
+
 // Update lastUpdated on save
 bugReportSchema.pre('save', function(next) {
   this.lastUpdated = new Date();
