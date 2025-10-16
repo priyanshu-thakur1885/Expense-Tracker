@@ -152,10 +152,26 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
 
     let saved;
     try {
+      console.log('🔄 Attempting to save bug report to database...');
       saved = await bugReport.save();
       console.log('✅ Bug report saved to DB with id:', saved._id, 'attachments:', attachments.length);
+      console.log('📊 Database name:', mongoose.connection.name);
+      console.log('📋 Collection name:', saved.collection.name);
+
+      // Verify the document exists in database
+      const verifyDoc = await BugReport.findById(saved._id);
+      if (verifyDoc) {
+        console.log('✅ Document verified in database');
+      } else {
+        console.log('❌ Document not found after save - possible database issue');
+      }
     } catch (saveErr) {
       console.error('❌ Failed to save bug report:', saveErr);
+      console.error('❌ Error details:', {
+        message: saveErr.message,
+        name: saveErr.name,
+        errors: saveErr.errors
+      });
       return res.status(500).json({ success: false, message: 'Failed to save bug report', error: saveErr.message });
     }
 
