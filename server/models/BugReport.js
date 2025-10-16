@@ -100,7 +100,8 @@ const bugReportSchema = new mongoose.Schema({
     type: Date
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'bugreports'
 });
 
 // Index for better query performance
