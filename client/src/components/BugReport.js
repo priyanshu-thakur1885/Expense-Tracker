@@ -55,12 +55,28 @@ const BugReport = ({ isOpen, onClose }) => {
         formData.append('attachments', file);
       });
 
+      console.log('🐛 Submitting bug report to:', `${API_BASE}/api/bug-report`);
+      console.log('📊 Form data being sent:', {
+        title: bugReport.title,
+        description: bugReport.description,
+        severity: bugReport.severity,
+        steps: bugReport.steps,
+        userEmail: user?.email,
+        userName: user?.name,
+        attachmentsCount: attachments.length
+      });
+
       const response = await fetch(`${API_BASE}/api/bug-report`, {
         method: 'POST',
         body: formData,
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('✅ Bug report submitted successfully:', responseData);
         setIsSubmitted(true);
         setTimeout(() => {
           onClose();
@@ -74,9 +90,23 @@ const BugReport = ({ isOpen, onClose }) => {
           setAttachments([]);
         }, 2000);
       } else {
-        const txt = await response.text();
-        console.error('Bug report response error:', txt);
-        throw new Error('Failed to submit bug report');
+        const errorText = await response.text();
+        console.error('❌ Bug report submission failed');
+        console.error('❌ Status:', response.status);
+        console.error('❌ Response:', errorText);
+
+        let errorMessage = 'Failed to submit bug report';
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+          console.error('❌ Parsed error data:', errorData);
+        } catch (parseErr) {
+          console.error('❌ Could not parse error response as JSON');
+        }
+
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Error submitting bug report:', error);
