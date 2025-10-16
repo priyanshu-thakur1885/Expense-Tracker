@@ -1,6 +1,7 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
+const mongoose = require('mongoose');
 const BugReport = require('../models/BugReport');
 const router = express.Router();
 
