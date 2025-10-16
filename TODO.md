@@ -1,9 +1,11 @@
-# Fix Daily Target Responsiveness to Monthly Budget Changes
+# Update Bug Report System with File Upload
 
 ## Tasks
-- [x] Modify budget update route to recalculate dailyTarget after monthlyLimit changes
-- [ ] Test that dailyTarget updates correctly when budget is modified
-- [ ] Verify dashboard displays updated daily target
+- [ ] Update BugReport model: remove expected/actual fields, add attachments array
+- [ ] Update BugReport component: remove expected/actual fields, add file upload input
+- [ ] Update bugReport route: handle multipart/form-data, save files to MongoDB
+- [ ] Install multer dependency for file handling
+- [ ] Test file upload and storage functionality
 
 ## Details
-The dailyTarget calculation only happens in the pre-save hook, which doesn't run on updates. Need to manually recalculate dailyTarget in the PUT /budget route after updating monthlyLimit.
+Remove expected and actual result fields from bug reports. Add file upload capability for images/videos to demonstrate bugs. Store uploaded files in MongoDB Atlas for admin access.
