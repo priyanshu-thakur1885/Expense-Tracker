@@ -20,11 +20,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  membershipPlan: {
-    type: String,
-    enum: ['gym', 'lpu', 'normal'],
-    default: 'normal'
-  },
   isActive: {
     type: Boolean,
     default: true

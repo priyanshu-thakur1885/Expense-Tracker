@@ -137,15 +137,13 @@ export const AuthProvider = ({ children }) => {
                 token
               }
             });
-            const planName = userData.membershipPlan === 'gym' ? 'Gym Member' :
-                           userData.membershipPlan === 'lpu' ? 'LPU Student' : 'User';
-            toast.success(`Welcome to Demo Mode as ${planName}!`);
+            toast.success('Welcome to Demo Mode!');
             return true;
           }
         }
       
       const response = await axios.post('/api/auth/verify', { token });
-
+      
       localStorage.setItem('token', token);
       dispatch({
         type: 'AUTH_SUCCESS',
@@ -154,10 +152,8 @@ export const AuthProvider = ({ children }) => {
           token
         }
       });
-
-      const planName = response.data.user.membershipPlan === 'gym' ? 'Gym Member' :
-                     response.data.user.membershipPlan === 'lpu' ? 'LPU Student' : 'User';
-      toast.success(`Welcome back, ${planName}!`);
+      
+      toast.success('Welcome back!');
       return true;
     } catch (error) {
       dispatch({ type: 'AUTH_FAILURE', payload: 'Login failed' });

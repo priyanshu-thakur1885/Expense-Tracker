@@ -24,21 +24,10 @@ router.get('/google/callback',
     try {
       // Check if user is admin
       const isAdmin = req.user.email === 'fun2begin8988@gmail.com';
-
-      // Determine membership plan based on query parameter or default logic
-      let membershipPlan = 'normal';
-      if (req.query.plan) {
-        membershipPlan = req.query.plan;
-      } else if (req.user.email.includes('@lpu.in') || req.user.email.includes('@lpunetwork.edu.in')) {
-        membershipPlan = 'lpu';
-      }
-
-      // Update user's membership plan
-      await User.findByIdAndUpdate(req.user._id, { membershipPlan });
-
+      
       // Generate JWT token with admin role
       const token = generateToken(req.user._id, isAdmin);
-
+      
       // Redirect to frontend with token
       res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/callback?token=${token}`);
     } catch (error) {
