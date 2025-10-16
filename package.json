@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "mongodb": "4.1",
+    "mongoose": "^8.19.1",
     "multer": "^2.0.2"
   }
 }
