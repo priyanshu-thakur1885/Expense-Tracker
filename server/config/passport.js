@@ -20,10 +20,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     let user = await User.findOne({ googleId: profile.id });
     
     if (user) {
-      // Update user info if needed
-      user.name = profile.displayName;
+      // Update user info if needed, but don't overwrite custom name changes
       user.email = profile.emails[0].value;
       user.photo = profile.photos[0].value;
+      // Only update name if it's still the default Google display name
+      if (user.name === profile.displayName) {
+        user.name = profile.displayName;
+      }
       await user.save();
       return done(null, user);
     }
