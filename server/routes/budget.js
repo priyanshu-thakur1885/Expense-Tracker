@@ -77,8 +77,8 @@ router.put('/', authenticateToken, async (req, res) => {
     const updateData = {};
     if (monthlyLimit !== undefined) {
       if (monthlyLimit < 100 || monthlyLimit > 50000) {
-        return res.status(400).json({ 
-          message: 'Monthly limit must be between ₹100 and ₹50,000' 
+        return res.status(400).json({
+          message: 'Monthly limit must be between ₹100 and ₹50,000'
         });
       }
       updateData.monthlyLimit = parseFloat(monthlyLimit);
@@ -95,6 +95,15 @@ router.put('/', authenticateToken, async (req, res) => {
     if (!budget) {
       return res.status(404).json({ message: 'Budget not found' });
     }
+
+    // Recalculate dailyTarget after budget update
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const daysRemaining = daysInMonth - now.getDate() + 1;
+    const remainingBudget = budget.monthlyLimit - budget.currentSpent;
+
+    budget.dailyTarget = daysRemaining > 0 ? Math.max(0, remainingBudget / daysRemaining) : 0;
+    await budget.save();
 
     res.json({ success: true, budget });
   } catch (error) {

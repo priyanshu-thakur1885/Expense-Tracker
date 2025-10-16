@@ -1,13 +1,9 @@
-# TODO: Implement AI Assistant for Expense Tracking App
+# Fix Daily Target Responsiveness to Monthly Budget Changes
 
-## Overview
-Implement four main AI functionalities: expense categorization, spending insights, future spending prediction, and report generation. Update the Expense model for broader categories and add new API endpoints.
+## Tasks
+- [x] Modify budget update route to recalculate dailyTarget after monthlyLimit changes
+- [ ] Test that dailyTarget updates correctly when budget is modified
+- [ ] Verify dashboard displays updated daily target
 
-## Steps
-- [ ] Update Expense model to include broader category mapping (Food & Drinks, Transport, Shopping, Utilities, Entertainment, Other)
-- [ ] Add new API endpoint for categorizing expenses (POST /api/expenses/categorize)
-- [ ] Add new API endpoint for spending insights (GET /api/expenses/insights)
-- [ ] Add new API endpoint for predicting future spending (GET /api/expenses/predict)
-- [ ] Add new API endpoint for generating reports (GET /api/expenses/report)
-- [ ] Test all new endpoints with demo mode support
-- [ ] Update server.js to register new routes if needed
+## Details
+The dailyTarget calculation only happens in the pre-save hook, which doesn't run on updates. Need to manually recalculate dailyTarget in the PUT /budget route after updating monthlyLimit.
