@@ -22,7 +22,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     if (user) {
       // Update user info if needed, but don't overwrite custom name changes
       user.email = profile.emails[0].value;
-      user.photo = profile.photos[0].value;
+      // Only update photo if it's not a custom uploaded photo (base64)
+      if (!user.photo || !user.photo.startsWith('data:image/')) {
+        user.photo = profile.photos[0].value;
+      }
       // Only update name if it's still the default Google display name
       if (user.name === profile.displayName) {
         user.name = profile.displayName;

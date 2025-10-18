@@ -8,5 +8,5 @@
 - [x] Add multer configuration for profile picture upload in user.js
 - [x] Store photo as base64 string in User model
 - [x] Update AuthContext after successful upload
-- [ ] Test the functionality
-- [ ] Commit and push changes to GitHub
+- [x] Test the functionality
+- [x] Commit and push changes to GitHub
