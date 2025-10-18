@@ -35,6 +35,7 @@ const Profile = () => {
     notifications: true,
     theme: theme
   });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     fetchBudget();
@@ -166,6 +167,54 @@ const Profile = () => {
     }));
   };
 
+  const handlePhotoChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result;
+        try {
+          const response = await axios.put('/api/user/profile', {
+            photo: base64
+          });
+
+          updateUser({
+            ...user,
+            photo: base64
+          });
+
+          toast.success('Profile picture updated successfully!');
+        } catch (error) {
+          console.error('Error updating profile picture:', error);
+          toast.error('Failed to update profile picture');
+        } finally {
+          setUploadingPhoto(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error reading file:', error);
+      toast.error('Failed to read image file');
+      setUploadingPhoto(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -187,9 +236,25 @@ const Profile = () => {
                 <User className="w-10 h-10 text-white" />
               </div>
             )}
-            <button className="absolute bottom-0 right-0 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
-              <Camera className="w-3 h-3 text-gray-600" />
-            </button>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+              id="photo-upload"
+            />
+            <label
+              htmlFor="photo-upload"
+              className={`absolute bottom-0 right-0 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                uploadingPhoto ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {uploadingPhoto ? (
+                <LoadingSpinner size="xs" />
+              ) : (
+                <Camera className="w-3 h-3 text-gray-600" />
+              )}
+            </label>
           </div>
           <div>
             <h1 className="text-2xl font-bold">{user?.name}</h1>

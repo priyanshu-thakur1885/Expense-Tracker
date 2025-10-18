@@ -1,11 +1,12 @@
-# Update Bug Report System with File Upload
+# Profile Picture Change Implementation
 
-## Tasks
-- [ ] Update BugReport model: remove expected/actual fields, add attachments array
-- [ ] Update BugReport component: remove expected/actual fields, add file upload input
-- [ ] Update bugReport route: handle multipart/form-data, save files to MongoDB
-- [ ] Install multer dependency for file handling
-- [ ] Test file upload and storage functionality
+## Steps to Complete
 
-## Details
-Remove expected and actual result fields from bug reports. Add file upload capability for images/videos to demonstrate bugs. Store uploaded files in MongoDB Atlas for admin access.
+- [x] Add hidden file input and onClick handler to camera button in Profile.js
+- [x] Implement file validation (image type, size limit 5MB) and base64 conversion
+- [x] Update server/routes/user.js PUT /profile route to handle photo upload
+- [x] Add multer configuration for profile picture upload in user.js
+- [x] Store photo as base64 string in User model
+- [x] Update AuthContext after successful upload
+- [ ] Test the functionality
+- [ ] Commit and push changes to GitHub

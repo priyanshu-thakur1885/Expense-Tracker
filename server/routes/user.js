@@ -1,10 +1,26 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const User = require('../models/User');
+const multer = require('multer');
 
 const router = express.Router();
 
 const ExcelJS = require('exceljs');
+
+// Configure multer for profile picture upload
+const profileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 
 // Get user profile
@@ -21,11 +37,12 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Update user profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { name, preferences } = req.body;
-    
+    const { name, preferences, photo } = req.body;
+
     const updateData = {};
     if (name) updateData.name = name;
     if (preferences) updateData.preferences = { ...req.user.preferences, ...preferences };
+    if (photo) updateData.photo = photo;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
