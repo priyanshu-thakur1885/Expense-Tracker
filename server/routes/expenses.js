@@ -375,13 +375,12 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
         console.log('Date range in ISO:', startDate.toISOString(), 'to', endDate.toISOString());
         break;
       case 'week':
-        const sunday = new Date(now);
-        sunday.setDate(now.getDate() - now.getDay());
-        startDate = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate());
+        // Last 7 days (including today)
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 6);
+        startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
 
-        const saturday = new Date(sunday);
-        saturday.setDate(sunday.getDate() + 6);
-        endDate = new Date(saturday.getFullYear(), saturday.getMonth(), saturday.getDate(), 23, 59, 59, 999);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         break;
       case 'month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
