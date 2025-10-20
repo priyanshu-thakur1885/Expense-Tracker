@@ -34,17 +34,14 @@ const EditExpense = () => {
   ];
 
   const foodCourts = [
-    'Central Food Court',
-    'Block 32 Food Court',
-    'Block 33 Food Court',
-    'Block 34 Food Court',
-    'Block 35 Food Court',
-    'Block 36 Food Court',
-    'Block 37 Food Court',
-    'Block 38 Food Court',
-    'Block 39 Food Court',
-    'Block 40 Food Court',
-    'Other'
+    'BH1 Food Court',
+    'Apartment Food Court',
+    'CC',
+    'CSE Food Court',
+    'Hostel Le Broc',
+    'NK Food Court',
+    'Food Factory',
+    'Other(Outside Campus)'
   ];
 
   useEffect(() => {
