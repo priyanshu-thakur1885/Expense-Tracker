@@ -201,11 +201,11 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
 
     const todaySpent = todayExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
-    // Calculate weekly expenses
+    // Calculate weekly expenses (last 7 days including today, matching Analytics)
     const weekStart = new Date(today);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekStart.setDate(today.getDate() - 6);
+    weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+    const weekEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
     const weekExpenses = await Expense.find({
       userId: req.user._id,
