@@ -218,7 +218,7 @@ const Login = () => {
 
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Designed for LPU Hostel Students
+              Designed for Hostel Students
             </p>
           </div>
         </motion.div>
