@@ -96,7 +96,7 @@ budgetSchema.virtual('spendingPercentage').get(function() {
 
 // Virtual for budget status
 budgetSchema.virtual('status').get(function() {
-  const percentage = this.spendingPercentage;
+  const percentage = (this.currentSpent / this.monthlyLimit) * 100;
   if (percentage < 50) return 'safe';
   if (percentage < 80) return 'warning';
   if (percentage < 100) return 'danger';
