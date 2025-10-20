@@ -35,14 +35,21 @@ router.get('/profile', authenticateToken, async (req, res) => {
 });
 
 // Update user profile
-router.put('/profile', authenticateToken, async (req, res) => {
+router.put('/profile', authenticateToken, profileUpload.single('photo'), async (req, res) => {
   try {
-    const { name, preferences, photo } = req.body;
+    const { name, preferences } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (preferences) updateData.preferences = { ...req.user.preferences, ...preferences };
-    if (photo) updateData.photo = photo;
+
+    // Handle photo upload
+    if (req.file) {
+      // Convert buffer to base64
+      const base64 = req.file.buffer.toString('base64');
+      const mimeType = req.file.mimetype;
+      updateData.photo = `data:${mimeType};base64,${base64}`;
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user._id,

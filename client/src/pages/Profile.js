@@ -185,32 +185,25 @@ const Profile = () => {
 
     setUploadingPhoto(true);
     try {
-      // Convert to base64
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target.result;
-        try {
-          const response = await axios.put('/api/user/profile', {
-            photo: base64
-          });
+      const formData = new FormData();
+      formData.append('photo', file);
 
-          updateUser({
-            ...user,
-            photo: base64
-          });
-
-          toast.success('Profile picture updated successfully!');
-        } catch (error) {
-          console.error('Error updating profile picture:', error);
-          toast.error('Failed to update profile picture');
-        } finally {
-          setUploadingPhoto(false);
+      const response = await axios.put('/api/user/profile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
         }
-      };
-      reader.readAsDataURL(file);
+      });
+
+      updateUser({
+        ...user,
+        photo: response.data.user.photo
+      });
+
+      toast.success('Profile picture updated successfully!');
     } catch (error) {
-      console.error('Error reading file:', error);
-      toast.error('Failed to read image file');
+      console.error('Error updating profile picture:', error);
+      toast.error('Failed to update profile picture');
+    } finally {
       setUploadingPhoto(false);
     }
   };
