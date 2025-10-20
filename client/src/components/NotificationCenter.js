@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bell, 
-  X, 
-  Check, 
-  Trash2, 
-  Settings, 
-  AlertTriangle, 
-  Info, 
+import {
+  Bell,
+  X,
+  Check,
+  Trash2,
+  Settings,
+  AlertTriangle,
+  Info,
   CheckCircle,
-  Clock,
-  Volume2,
-  VolumeX,
   Crown
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
@@ -27,7 +24,8 @@ const NotificationCenter = () => {
     markAllAsRead,
     deleteNotification,
     clearAllNotifications,
-    updateSettings
+    updateSettings,
+    addNotification
   } = useNotifications();
   
   const { user } = useAuth();
@@ -35,7 +33,7 @@ const NotificationCenter = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [adminNotifications, setAdminNotifications] = useState([]);
-  const [loadingAdminNotifications, setLoadingAdminNotifications] = useState(false);
+
   const API_BASE = process.env.REACT_APP_API_URL || '';
 
   // Calculate total unread count including admin notifications
@@ -44,23 +42,20 @@ const NotificationCenter = () => {
   // Fetch admin notifications
   const fetchAdminNotifications = async () => {
     if (!user) return;
-    
+
     try {
-      setLoadingAdminNotifications(true);
       const response = await fetch(`${API_BASE}/api/admin/notifications`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setAdminNotifications(data.notifications || []);
       }
     } catch (error) {
       console.error('Error fetching admin notifications:', error);
-    } finally {
-      setLoadingAdminNotifications(false);
     }
   };
 
@@ -94,6 +89,7 @@ const NotificationCenter = () => {
     if (user && isOpen) {
       fetchAdminNotifications();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isOpen]);
 
   // Listen for budget exceeded events
@@ -110,9 +106,8 @@ const NotificationCenter = () => {
         data: { spent, limit, percentage, exceededAmount }
       };
 
-      // Use the notification context to add the notification
-      // Since we can't directly call addNotification here, we'll use a custom event
-      window.dispatchEvent(new CustomEvent('addBudgetExceededNotification', { detail: notification }));
+      // Use the notification context to add the notification directly
+      addNotification(notification);
     };
 
     window.addEventListener('budgetExceeded', handleBudgetExceeded);
@@ -120,12 +115,7 @@ const NotificationCenter = () => {
     return () => {
       window.removeEventListener('budgetExceeded', handleBudgetExceeded);
     };
-  }, []);
-  useEffect(() => {
-    if (user && isOpen) {
-      fetchAdminNotifications();
-    }
-  }, [user, isOpen]);
+  }, [addNotification]);
 
   // Debug logging
   useEffect(() => {
