@@ -96,6 +96,37 @@ const NotificationCenter = () => {
     }
   }, [user, isOpen]);
 
+  // Listen for budget exceeded events
+  useEffect(() => {
+    const handleBudgetExceeded = (event) => {
+      const { spent, limit, percentage, exceededAmount } = event.detail;
+
+      // Add notification using the notification context
+      const notification = {
+        type: 'budget_alert',
+        title: '🚨 Budget Exceeded!',
+        message: `Your monthly budget has been exceeded by ₹${exceededAmount.toFixed(2)}! You've spent ₹${spent.toFixed(2)} out of ₹${limit.toFixed(2)} (${percentage.toFixed(1)}%). Please review your spending.`,
+        severity: 'critical',
+        data: { spent, limit, percentage, exceededAmount }
+      };
+
+      // Use the notification context to add the notification
+      // Since we can't directly call addNotification here, we'll use a custom event
+      window.dispatchEvent(new CustomEvent('addBudgetExceededNotification', { detail: notification }));
+    };
+
+    window.addEventListener('budgetExceeded', handleBudgetExceeded);
+
+    return () => {
+      window.removeEventListener('budgetExceeded', handleBudgetExceeded);
+    };
+  }, []);
+  useEffect(() => {
+    if (user && isOpen) {
+      fetchAdminNotifications();
+    }
+  }, [user, isOpen]);
+
   // Debug logging
   useEffect(() => {
     console.log('NotificationCenter Debug:', {

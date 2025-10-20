@@ -439,14 +439,6 @@ const Profile = () => {
                   </>
                 )}
               </button>
-              
-              {/* Test button for budget exceeded notification */}
-              <button
-                onClick={() => notificationService.testBudgetExceeded()}
-                className="btn btn-secondary w-full text-sm"
-              >
-                🧪 Test Budget Exceeded Alert
-              </button>
             </div>
           </div>
         </motion.div>

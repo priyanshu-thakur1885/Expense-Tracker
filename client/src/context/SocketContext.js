@@ -210,12 +210,18 @@ export const SocketProvider = ({ children }) => {
       console.log('Admin disconnected:', data);
     });
 
+    // Budget exceeded notification
+    newSocket.on('budgetExceeded', (data) => {
+      console.log('💰 Budget exceeded notification received:', data);
+
+      // Emit a custom event that can be listened to by components
+      window.dispatchEvent(new CustomEvent('budgetExceeded', { detail: data }));
+    });
+
     // Error handling
     newSocket.on('error', (error) => {
       console.error('Socket error:', error);
     });
-
-    setSocket(newSocket);
 
     // Cleanup on unmount
     return () => {

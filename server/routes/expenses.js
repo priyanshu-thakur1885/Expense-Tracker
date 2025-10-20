@@ -168,6 +168,26 @@ router.post('/', authenticateToken, async (req, res) => {
       { upsert: true }
     );
 
+    // Check budget status after adding expense
+    const updatedBudget = await Budget.findOne({ userId: req.user._id });
+    if (updatedBudget) {
+      const percentage = (updatedBudget.currentSpent / updatedBudget.monthlyLimit) * 100;
+
+      // Trigger notification if budget exceeded
+      if (percentage >= 100) {
+        // Emit socket event for real-time notification
+        const io = req.app.get('io');
+        if (io) {
+          io.to(req.user._id.toString()).emit('budgetExceeded', {
+            spent: updatedBudget.currentSpent,
+            limit: updatedBudget.monthlyLimit,
+            percentage: percentage,
+            exceededAmount: updatedBudget.currentSpent - updatedBudget.monthlyLimit
+          });
+        }
+      }
+    }
+
     res.status(201).json({ success: true, expense });
   } catch (error) {
     console.error('Create expense error:', error);
