@@ -251,7 +251,7 @@ const Profile = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold">{user?.name}</h1>
-            <p className="text-primary-100">LPU Student</p>
+            <p className="text-primary-100">Student</p>
             <p className="text-primary-200 text-sm">{user?.email}</p>
           </div>
         </div>
