@@ -103,4 +103,7 @@ budgetSchema.virtual('status').get(function() {
   return 'exceeded';
 });
 
+// Enable virtual fields in JSON responses
+budgetSchema.set('toJSON', { virtuals: true });
+
 module.exports = mongoose.model('Budget', budgetSchema);
