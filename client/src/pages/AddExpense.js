@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft } from 'lucide-react';
+import { Save, ArrowLeft, Mic } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import notificationService from '../services/notificationService';
 import axios from 'axios';
@@ -12,6 +12,8 @@ const AddExpense = () => {
   const navigate = useNavigate();
   const { generateExpenseNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
+  const [listeningField, setListeningField] = useState(null);
+
   const [formData, setFormData] = useState({
     item: '',
     amount: '',
@@ -92,6 +94,62 @@ const AddExpense = () => {
     }
   };
 
+  // 🎤 Voice recognition handler
+  const handleVoiceInput = (field) => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Speech Recognition not supported in this browser. Please use Google Chrome.');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    setListeningField(field);
+    recognition.start();
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      console.log('🎤 Heard:', transcript);
+
+      // Parse full sentence for all fields (if item mic used)
+      if (field === 'item') {
+        const priceMatch = transcript.match(/(\d+)\s*(?:rupees|rupee|rs|₹)?/);
+        const blockMatch = transcript.match(/block\s*(\d+)/);
+        const itemMatch = transcript
+          .replace(/block\s*\d+/g, '')
+          .replace(/(\d+)\s*(?:rupees|rupee|rs|₹)?/g, '')
+          .trim();
+
+        setFormData(prev => ({
+          ...prev,
+          item: itemMatch || prev.item,
+          foodCourt: blockMatch ? `Block ${blockMatch[1]}` : prev.foodCourt,
+          amount: priceMatch ? priceMatch[1] : prev.amount
+        }));
+      } 
+      // Handle single field mics
+      else if (field === 'amount') {
+        const amount = transcript.match(/\d+/);
+        if (amount) setFormData(prev => ({ ...prev, amount: amount[0] }));
+      } 
+      else if (field === 'foodCourt') {
+        setFormData(prev => ({ ...prev, foodCourt: transcript }));
+      }
+    };
+
+    recognition.onerror = () => {
+      toast.error('Voice input failed. Try again.');
+      setListeningField(null);
+    };
+
+    recognition.onend = () => {
+      setListeningField(null);
+    };
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <motion.div
@@ -126,16 +184,27 @@ const AddExpense = () => {
             <label htmlFor="item" className="label block mb-2">
               Food Item <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              id="item"
-              name="item"
-              value={formData.item}
-              onChange={handleInputChange}
-              placeholder="e.g., Chicken Biryani, Pizza, Coffee"
-              className="input w-full"
-              required
-            />
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                id="item"
+                name="item"
+                value={formData.item}
+                onChange={handleInputChange}
+                placeholder="e.g., Chicken Biryani, Pizza, Coffee"
+                className="input w-full"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => handleVoiceInput('item')}
+                className={`p-2 rounded-lg transition-colors duration-200 ${
+                  listeningField === 'item' ? 'bg-red-200' : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                <Mic className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
           </div>
 
           {/* Amount and Category */}
@@ -144,18 +213,29 @@ const AddExpense = () => {
               <label htmlFor="amount" className="label block mb-2">
                 Amount (₹) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                className="input w-full"
-                required
-              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="number"
+                  id="amount"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  className="input w-full"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => handleVoiceInput('amount')}
+                  className={`p-2 rounded-lg transition-colors duration-200 ${
+                    listeningField === 'amount' ? 'bg-red-200' : 'bg-gray-100 hover:bg-gray-200'
+                  }`}
+                >
+                  <Mic className="w-5 h-5 text-gray-700" />
+                </button>
+              </div>
             </div>
 
             <div>
@@ -183,21 +263,32 @@ const AddExpense = () => {
             <label htmlFor="foodCourt" className="label block mb-2">
               Food Court <span className="text-red-500">*</span>
             </label>
-            <select
-              id="foodCourt"
-              name="foodCourt"
-              value={formData.foodCourt}
-              onChange={handleInputChange}
-              className="input w-full"
-              required
-            >
-              <option value="">Select Food Court</option>
-              {foodCourts.map(court => (
-                <option key={court} value={court}>
-                  {court}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center space-x-2">
+              <select
+                id="foodCourt"
+                name="foodCourt"
+                value={formData.foodCourt}
+                onChange={handleInputChange}
+                className="input w-full"
+                required
+              >
+                <option value="">Select Food Court</option>
+                {foodCourts.map(court => (
+                  <option key={court} value={court}>
+                    {court}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleVoiceInput('foodCourt')}
+                className={`p-2 rounded-lg transition-colors duration-200 ${
+                  listeningField === 'foodCourt' ? 'bg-red-200' : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                <Mic className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
           </div>
 
           {/* Date */}
