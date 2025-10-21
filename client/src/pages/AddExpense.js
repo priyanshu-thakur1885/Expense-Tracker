@@ -73,12 +73,15 @@ const AddExpense = () => {
         const detectedItem = match[1].trim();
         const detectedFoodCourt = match[2].trim();
         const detectedAmount = match[3].trim();
+        const matchedCourt = foodCourts.find(
+  (court) => court.toLowerCase() === detectedFoodCourt.toLowerCase()
+) || 'Other(Outside Campus)';
 
         // Fill the fields
         setFormData((prev) => ({
           ...prev,
           item: detectedItem || prev.item,
-          foodCourt: detectedFoodCourt || prev.foodCourt,
+          foodCourt: matchedCourt,
           amount: detectedAmount || prev.amount,
         }));
 
