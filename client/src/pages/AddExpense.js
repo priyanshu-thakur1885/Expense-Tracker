@@ -92,7 +92,7 @@ const AddExpense = () => {
           const expenseData = {
             ...formData,
             item: detectedItem,
-            foodCourt: detectedFoodCourt,
+            foodCourt: matchedCourt,
             amount: parseFloat(detectedAmount),
             tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
           };
