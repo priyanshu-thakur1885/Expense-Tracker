@@ -13,6 +13,7 @@ const AddExpense = () => {
   const { generateExpenseNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
+  const [message, setMessage] = useState('');
   const [formData, setFormData] = useState({
     item: '',
     amount: '',
@@ -36,27 +37,21 @@ const AddExpense = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🎤 Voice Input Functionality
+  // 🎤 Voice Input Functionality with Instruction Popup
   const handleVoiceInput = () => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       alert('Speech recognition is not supported in this browser. Please use Google Chrome.');
       return;
     }
 
-    // Show instruction
-    toast('Only say: "I had [food item] from [food court] and it cost me [price]"', {
-      icon: '🎤',
-      duration: 4000,
-    });
+    // Show instruction popup
+    setMessage('Only say: I had [food item] from [food court] and it cost me [price]');
+    setTimeout(() => setMessage(''), 4000);
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-IN';
     recognition.interimResults = false;
@@ -64,52 +59,56 @@ const AddExpense = () => {
 
     recognition.start();
     setListening(true);
-    toast('Listening... 🎧');
+    toast('Listening... 🎤', { icon: '🎧' });
 
-    recognition.onresult = (event) => {
+    recognition.onresult = async (event) => {
       const transcript = event.results[0][0].transcript.toLowerCase();
       console.log('Voice input:', transcript);
 
-      let detectedItem = '';
-      let detectedAmount = '';
-      let detectedFoodCourt = '';
+      // Match the format: "I had [food item] from [food court] and it cost me [price]"
+      const regex = /i had (.*) from (.*) and it cost me (\d+)/i;
+      const match = transcript.match(regex);
 
-      // Extract amount (e.g., "100 rupees" or "₹100")
-      const amountMatch = transcript.match(/(\d+)(\s?rupees|₹)?/);
-      if (amountMatch) detectedAmount = amountMatch[1];
+      if (match) {
+        const detectedItem = match[1].trim();
+        const detectedFoodCourt = match[2].trim();
+        const detectedAmount = match[3].trim();
 
-      // Extract food court from "from [food court]" pattern
-      const fromMatch = transcript.match(/from\s+([a-zA-Z\s]+)/);
-      if (fromMatch) {
-        const spokenCourt = fromMatch[1].trim();
-        for (const court of foodCourts) {
-          if (court.toLowerCase().includes(spokenCourt)) {
-            detectedFoodCourt = court;
-            break;
-          }
+        // Fill the fields
+        setFormData((prev) => ({
+          ...prev,
+          item: detectedItem || prev.item,
+          foodCourt: detectedFoodCourt || prev.foodCourt,
+          amount: detectedAmount || prev.amount,
+        }));
+
+        toast.success('Voice input processed!');
+
+        // Optionally, send to backend immediately
+        try {
+          const expenseData = {
+            ...formData,
+            item: detectedItem,
+            foodCourt: detectedFoodCourt,
+            amount: parseFloat(detectedAmount),
+            tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
+          };
+
+          await axios.post('/api/expenses', expenseData);
+          generateExpenseNotification('expense_added', parseFloat(detectedAmount), formData.category);
+          notificationService.generateExpenseInsight({
+            amount: parseFloat(detectedAmount),
+            category: formData.category,
+          });
+        } catch (error) {
+          console.error('Error adding expense via voice:', error);
         }
+      } else {
+        toast.error(
+          'Please speak in the correct format: I had [food item] from [food court] and it cost me [price]'
+        );
       }
 
-      // Extract item name heuristically
-      // Remove common keywords and the food court part
-      let cleaned = transcript
-        .replace(/(block|food court|rupees|₹|\d+)/g, '')
-        .replace(/(from|in|at|cost|for|buy|bought|had|purchase|item|it|is)/g, '')
-        .replace(new RegExp(detectedFoodCourt.toLowerCase(), 'g'), '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      detectedItem = cleaned.split(' ')[0] ? cleaned : '';
-
-      // Fill the fields
-      setFormData((prev) => ({
-        ...prev,
-        item: detectedItem || prev.item,
-        amount: detectedAmount || prev.amount,
-        foodCourt: detectedFoodCourt || prev.foodCourt,
-      }));
-
-      toast.success('Voice input processed! 🎯');
       setListening(false);
     };
 
@@ -140,19 +139,12 @@ const AddExpense = () => {
       const expenseData = {
         ...formData,
         amount: parseFloat(formData.amount),
-        tags: formData.tags
-          ? formData.tags.split(',').map((tag) => tag.trim())
-          : [],
+        tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
       };
 
       await axios.post('/api/expenses', expenseData);
 
-      generateExpenseNotification(
-        'expense_added',
-        parseFloat(formData.amount),
-        formData.category
-      );
-
+      generateExpenseNotification('expense_added', parseFloat(formData.amount), formData.category);
       notificationService.generateExpenseInsight({
         amount: parseFloat(formData.amount),
         category: formData.category,
@@ -207,6 +199,13 @@ const AddExpense = () => {
             <Mic className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Instruction Message */}
+        {message && (
+          <div className="fixed bottom-20 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-md z-50">
+            {message}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -297,28 +296,28 @@ const AddExpense = () => {
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              className="input"
+              className="input w-full"
             />
           </div>
 
           <div>
             <label htmlFor="description" className="label block mb-2">
-              Description
+              Description (Optional)
             </label>
             <textarea
               id="description"
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              placeholder="Add notes or details"
-              className="input w-full"
+              placeholder="Any additional notes about this expense..."
               rows={3}
+              className="input w-full resize-none"
             />
           </div>
 
           <div>
             <label htmlFor="tags" className="label block mb-2">
-              Tags (comma separated)
+              Tags (Optional)
             </label>
             <input
               type="text"
@@ -326,20 +325,37 @@ const AddExpense = () => {
               name="tags"
               value={formData.tags}
               onChange={handleInputChange}
-              placeholder="spicy, cheese, cold drink"
+              placeholder="e.g., spicy, healthy, quick (comma separated)"
               className="input w-full"
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary w-full flex justify-center items-center space-x-2"
-          >
-            {loading && <LoadingSpinner size={20} />}
-            <Save className="w-5 h-5" />
-            <span>Add Expense</span>
-          </button>
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="btn btn-secondary"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              disabled={loading}
+              className="btn btn-primary flex items-center space-x-2"
+            >
+              {loading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Save Expense</span>
+                </>
+              )}
+            </motion.button>
+          </div>
         </form>
       </motion.div>
     </div>
