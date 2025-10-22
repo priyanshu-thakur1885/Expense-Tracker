@@ -306,7 +306,7 @@ router.get('/export', authenticateToken, async (req, res) => {
         foodCourt: exp.foodCourt || '',
         amount: exp.amount
       });
-    });;;;;;
+    });
 
     // Monthly Summary sheet
     const summary = workbook.addWorksheet('Monthly Summary');
