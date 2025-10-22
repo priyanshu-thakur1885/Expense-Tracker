@@ -12,27 +12,48 @@ const AuthCallback = () => {
   const hasHandled = useRef(false);
 
   useEffect(() => {
-    if (hasHandled.current) return; // prevent multiple executions
+    if (hasHandled.current) return; // prevent multiple runs
     hasHandled.current = true;
+
     const handleAuthCallback = async () => {
       const token = searchParams.get('token');
       const error = searchParams.get('error');
 
+      console.log('🔁 AuthCallback triggered:', {
+        tokenPresent: !!token,
+        error,
+        currentURL: window.location.href,
+      });
+
+      // If backend sent an error (auth_failed, no_user, etc.)
       if (error) {
         toast.error('Authentication failed. Please try again.');
+        console.error('❌ Auth error:', error);
         navigate('/login');
         return;
       }
 
+      // If token is present, try to log in
       if (token) {
-        const success = await login(token);
-        if (success) {
-          navigate('/dashboard');
-        } else {
+        try {
+          const success = await login(token);
+
+          if (success) {
+            toast.success('Signed in successfully!');
+            navigate('/dashboard');
+          } else {
+            toast.error('Login failed. Please try again.');
+            navigate('/login');
+          }
+        } catch (err) {
+          console.error('❌ Auth callback login error:', err);
+          toast.error('Something went wrong during login.');
           navigate('/login');
         }
       } else {
+        // No token provided in URL
         toast.error('No authentication token received.');
+        console.error('❌ No token received in callback URL.');
         navigate('/login');
       }
     };
@@ -48,7 +69,7 @@ const AuthCallback = () => {
           Completing sign in...
         </h2>
         <p className="text-gray-600 dark:text-gray-300">
-          Please wait while we set up your account.
+          Please wait while we finalize your login.
         </p>
       </div>
     </div>
