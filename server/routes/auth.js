@@ -1,34 +1,52 @@
 const express = require('express');
 const passport = require('passport');
+const jwt = require('jsonwebtoken');
 const { generateToken } = require('../middleware/auth');
 const User = require('../models/User');
 
 const router = express.Router();
 
-// Google OAuth login
-router.get('/google', (req, res) => {
+/* ======================
+   GOOGLE AUTH LOGIN
+   ====================== */
+router.get('/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(503).json({ 
       message: 'Google OAuth not configured. Please use demo mode.' 
     });
   }
+
   passport.authenticate('google', { 
-    scope: ['profile', 'email'] 
-  })(req, res);
+    scope: ['profile', 'email'],
+    prompt: 'select_account'
+  })(req, res, next);
 });
 
-// Google OAuth callback
-router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
+/* ======================
+   GOOGLE AUTH CALLBACK
+   ====================== */
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:3000'}/login` }),
   async (req, res) => {
     try {
-      // Check if user is admin
+      if (!req.user) {
+        console.error('❌ Google auth failed: no user returned');
+        return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=no_user`);
+      }
+
+      // Check admin role
       const isAdmin = req.user.email === 'fun2begin8988@gmail.com';
-      
-      // Generate JWT token with admin role
+
+      // Generate JWT token
       const token = generateToken(req.user._id, isAdmin);
-      
-      // Redirect to frontend with token
+
+      console.log('✅ Google login successful:', {
+        email: req.user.email,
+        redirect: `${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/callback?token=${token.substring(0, 15)}...`
+      });
+
+      // Redirect user to frontend with token
       res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/callback?token=${token}`);
     } catch (error) {
       console.error('Auth callback error:', error);
@@ -37,13 +55,15 @@ router.get('/google/callback',
   }
 );
 
-// Get current user info
+/* ======================
+   GET CURRENT USER
+   ====================== */
 router.get('/me', async (req, res) => {
   try {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
+
     const user = await User.findById(req.user._id).select('-__v');
     res.json({
       success: true,
@@ -61,7 +81,9 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// Logout
+/* ======================
+   LOGOUT
+   ====================== */
 router.post('/logout', (req, res) => {
   req.logout((err) => {
     if (err) {
@@ -71,30 +93,26 @@ router.post('/logout', (req, res) => {
   });
 });
 
-// Verify token endpoint
+/* ======================
+   VERIFY TOKEN
+   ====================== */
 router.post('/verify', async (req, res) => {
   try {
     const { token } = req.body;
-    
+
     if (!token) {
       return res.status(400).json({ message: 'Token required' });
     }
 
-    const jwt = require('jsonwebtoken');
-    // Debug: log token length and prefix to diagnose malformed tokens (not the full token)
-    try {
-      console.log('Auth verify: token length', token.length, 'prefix', token.substring(0, 12));
-    } catch (_) {}
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     const user = await User.findById(decoded.userId).select('-__v');
-    
+
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    // Check if user is admin
     const isAdmin = user.email === 'fun2begin8988@gmail.com';
-    
+
     res.json({
       success: true,
       user: {
@@ -103,7 +121,7 @@ router.post('/verify', async (req, res) => {
         email: user.email,
         photo: user.photo,
         preferences: user.preferences,
-        isAdmin: isAdmin
+        isAdmin
       }
     });
   } catch (error) {
