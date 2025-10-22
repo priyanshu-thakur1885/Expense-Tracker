@@ -19,11 +19,11 @@ const AdminPinProtection = ({ onPinCorrect, onCancel }) => {
     
     // Simulate a small delay for security
     setTimeout(() => {
-      if (pin === '9317') {
+      if (pin === '5396') {
         setError('');
         onPinCorrect();
       } else {
-        setError('You think you smart huh?');
+        setError('You think you smart huh, B*tch!?');
         setPin('');
       }
       setIsLoading(false);
