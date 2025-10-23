@@ -58,7 +58,8 @@ const Expenses = () => {
 
   useEffect(() => {
     fetchExpenses();
-  }, [pagination.current, filterCategory, filterFoodCourt, sortBy, sortOrder]);
+}, [pagination.current, filterCategory, filterFoodCourt, sortBy, sortOrder, searchTerm]);
+
 
   const fetchExpenses = async () => {
     try {
