@@ -318,20 +318,6 @@ const AddExpense = () => {
             />
           </div>
 
-          <div>
-            <label htmlFor="tags" className="label block mb-2">
-              Tags (Optional)
-            </label>
-            <input
-              type="text"
-              id="tags"
-              name="tags"
-              value={formData.tags}
-              onChange={handleInputChange}
-              placeholder="e.g., spicy, healthy, quick (comma separated)"
-              className="input w-full"
-            />
-          </div>
 
           <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button
