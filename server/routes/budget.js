@@ -11,10 +11,9 @@ router.get('/', authenticateToken, async (req, res) => {
     let budget = await Budget.findOne({ userId: req.user._id });
     
     if (!budget) {
-      // Create default budget if none exists
       budget = new Budget({
         userId: req.user._id,
-        monthlyLimit: 4000, // Default ₹4000
+        monthlyLimit: 4000,
         currentSpent: 0
       });
       await budget.save();
@@ -38,7 +37,6 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Calculate current spent amount from expenses
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -96,13 +94,11 @@ router.put('/', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Budget not found' });
     }
 
-    // Recalculate dailyTarget after budget update
+    // ✅ Fixed dailyTarget calculation (constant)
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysRemaining = daysInMonth - now.getDate() + 1;
-    const remainingBudget = budget.monthlyLimit - budget.currentSpent;
+    budget.dailyTarget = budget.monthlyLimit / daysInMonth;
 
-    budget.dailyTarget = daysRemaining > 0 ? Math.max(0, remainingBudget / daysRemaining) : 0;
     await budget.save();
 
     res.json({ success: true, budget });
@@ -143,7 +139,7 @@ router.post('/reset', authenticateToken, async (req, res) => {
 // Get budget insights and recommendations
 router.get('/insights', authenticateToken, async (req, res) => {
   try {
-    // Handle demo mode
+    // Demo mode
     if (req.user._id === '507f1f77bcf86cd799439011') {
       const demoInsights = {
         budget: {
@@ -152,7 +148,7 @@ router.get('/insights', authenticateToken, async (req, res) => {
           remaining: 3675
         },
         insights: {
-          dailyTarget: 118.55,
+          dailyTarget: 4000 / 30,
           daysRemaining: 31,
           spendingRate: 'Good',
           recommendations: [
@@ -166,7 +162,6 @@ router.get('/insights', authenticateToken, async (req, res) => {
     }
 
     const budget = await Budget.findOne({ userId: req.user._id });
-    
     if (!budget) {
       return res.status(404).json({ message: 'Budget not found' });
     }
@@ -175,22 +170,19 @@ router.get('/insights', authenticateToken, async (req, res) => {
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const daysRemaining = daysInMonth - now.getDate() + 1;
     const remainingBudget = budget.monthlyLimit - budget.currentSpent;
-    const dailyTarget = daysRemaining > 0 ? remainingBudget / daysRemaining : 0;
 
-    // Get recent expenses for analysis
+    // ✅ Fixed daily target (constant)
+    const dailyTarget = budget.monthlyLimit / daysInMonth;
+
     const recentExpenses = await Expense.find({
       userId: req.user._id,
       date: { $gte: new Date(now.getFullYear(), now.getMonth(), 1) }
     }).sort({ date: -1 }).limit(10);
 
-    // Calculate average daily spending
     const daysPassed = now.getDate();
     const averageDailySpending = daysPassed > 0 ? budget.currentSpent / daysPassed : 0;
 
-    // Generate insights
     const insights = {
-      budgetStatus: budget.status,
-      spendingPercentage: budget.spendingPercentage,
       remainingBudget,
       dailyTarget,
       averageDailySpending,
@@ -198,18 +190,17 @@ router.get('/insights', authenticateToken, async (req, res) => {
       recommendations: []
     };
 
-    // Add recommendations based on spending patterns
     if (budget.spendingPercentage > 80) {
       insights.recommendations.push({
         type: 'warning',
         message: 'You\'ve used over 80% of your budget. Consider reducing daily expenses.',
-        action: 'Reduce daily spending to ₹' + Math.round(dailyTarget) + ' per day'
+        action: 'Reduce daily spending to ₹' + Math.round(dailyTarget)
       });
     } else if (budget.spendingPercentage > 50) {
       insights.recommendations.push({
         type: 'info',
         message: 'You\'re halfway through your budget. Stay mindful of spending.',
-        action: 'Aim to spend no more than ₹' + Math.round(dailyTarget) + ' per day'
+        action: 'Aim to spend no more than ₹' + Math.round(dailyTarget)
       });
     } else {
       insights.recommendations.push({
@@ -219,7 +210,6 @@ router.get('/insights', authenticateToken, async (req, res) => {
       });
     }
 
-    // Add food court recommendations
     const foodCourtStats = {};
     recentExpenses.forEach(expense => {
       foodCourtStats[expense.foodCourt] = (foodCourtStats[expense.foodCourt] || 0) + expense.amount;
