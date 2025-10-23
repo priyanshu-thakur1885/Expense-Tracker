@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { Search } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
-const Header = ({ onSearch }) => { // Added onSearch prop
+
+const Header = ({ searchTerm, setSearchTerm }) => {
   const { user } = useAuth();
 
   return (

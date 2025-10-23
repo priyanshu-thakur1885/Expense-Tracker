@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import Header from '../components/Header';
+
 import { motion } from 'framer-motion';
 import { 
   Plus, 
@@ -18,6 +20,7 @@ import { format } from 'date-fns';
 
 const Expenses = () => {
   const navigate = useNavigate();
+  
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -125,6 +128,8 @@ const Expenses = () => {
 
   return (
     <div className="space-y-6">
+      <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
