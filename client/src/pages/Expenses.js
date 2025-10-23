@@ -128,7 +128,7 @@ const Expenses = () => {
 
   return (
     <div className="space-y-6">
-      <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+      
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
