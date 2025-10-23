@@ -41,88 +41,137 @@ const AddExpense = () => {
   };
 
   // 🎤 Voice Input Functionality with Instruction Popup
-  const handleVoiceInput = () => {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser. Please use Google Chrome.');
-      return;
+  // 🎤 Voice Input Functionality (without auto submit)
+const handleVoiceInput = () => {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Speech recognition is not supported in this browser. Please use Google Chrome.');
+    return;
+  }
+
+  // Show instruction popup
+  setMessage('Only say: I had [food item] from [food court] and it cost me [price]');
+  setTimeout(() => setMessage(''), 4000);
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'en-IN';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.start();
+  setListening(true);
+  toast('Listening... 🎤', { icon: '🎧' });
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.toLowerCase();
+    console.log('Voice input:', transcript);
+
+    // Match the format: "I had [food item] from [food court] and it cost me [price]"
+    const regex = /i had (.*) from (.*) and it cost me (\d+)/i;
+    const match = transcript.match(regex);
+
+    if (match) {
+      const detectedItem = match[1].trim();
+      const detectedFoodCourt = match[2].trim();
+      const detectedAmount = match[3].trim();
+
+      const matchedCourt =
+        foodCourts.find(
+          (court) => court.toLowerCase() === detectedFoodCourt.toLowerCase()
+        ) || 'Other(Outside Campus)';
+
+      // Fill the fields only (do not auto-submit)
+      setFormData((prev) => ({
+        ...prev,
+        item: detectedItem || prev.item,
+        foodCourt: matchedCourt,
+        amount: detectedAmount || prev.amount,
+      }));
+
+      toast.success('Voice input processed! Review and click Save to confirm.');
+    } else {
+      toast.error(
+        'Please speak in the correct format: I had [food item] from [food court] and it cost me [price]'
+      );
     }
 
-    // Show instruction popup
-    setMessage('Only say: I had [food item] from [food court] and it cost me [price]');
-    setTimeout(() => setMessage(''), 4000);
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-IN';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.start();
-    setListening(true);
-    toast('Listening... 🎤', { icon: '🎧' });
-
-    recognition.onresult = async (event) => {
-      const transcript = event.results[0][0].transcript.toLowerCase();
-      console.log('Voice input:', transcript);
-
-      // Match the format: "I had [food item] from [food court] and it cost me [price]"
-      const regex = /i had (.*) from (.*) and it cost me (\d+)/i;
-      const match = transcript.match(regex);
-
-      if (match) {
-        const detectedItem = match[1].trim();
-        const detectedFoodCourt = match[2].trim();
-        const detectedAmount = match[3].trim();
-        const matchedCourt = foodCourts.find(
-  (court) => court.toLowerCase() === detectedFoodCourt.toLowerCase()
-) || 'Other(Outside Campus)';
-
-        // Fill the fields
-        setFormData((prev) => ({
-          ...prev,
-          item: detectedItem || prev.item,
-          foodCourt: matchedCourt,
-          amount: detectedAmount || prev.amount,
-        }));
-
-        toast.success('Voice input processed!');
-
-        // Optionally, send to backend immediately
-        try {
-          const expenseData = {
-            ...formData,
-            item: detectedItem,
-            foodCourt: matchedCourt,
-            amount: parseFloat(detectedAmount),
-            tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
-          };
-
-          await axios.post('/api/expenses', expenseData);
-          generateExpenseNotification('expense_added', parseFloat(detectedAmount), formData.category);
-          notificationService.generateExpenseInsight({
-            amount: parseFloat(detectedAmount),
-            category: formData.category,
-          });
-        } catch (error) {
-          console.error('Error adding expense via voice:', error);
-        }
-      } else {
-        toast.error(
-          'Please speak in the correct format: I had [food item] from [food court] and it cost me [price]'
-        );
-      }
-
-      setListening(false);
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      toast.error('Voice recognition failed. Try again.');
-      setListening(false);
-    };
-
-    recognition.onend = () => setListening(false);
+    setListening(false);
   };
+
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    toast.error('Voice recognition failed. Try again.');
+    setListening(false);
+  };
+
+  recognition.onend = () => setListening(false);
+};
+// 🎤 Voice Input Functionality (without auto submit)
+const handleVoiceInput = () => {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Speech recognition is not supported in this browser. Please use Google Chrome.');
+    return;
+  }
+
+  // Show instruction popup
+  setMessage('Only say: I had [food item] from [food court] and it cost me [price]');
+  setTimeout(() => setMessage(''), 4000);
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'en-IN';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.start();
+  setListening(true);
+  toast('Listening... 🎤', { icon: '🎧' });
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.toLowerCase();
+    console.log('Voice input:', transcript);
+
+    // Match the format: "I had [food item] from [food court] and it cost me [price]"
+    const regex = /i had (.*) from (.*) and it cost me (\d+)/i;
+    const match = transcript.match(regex);
+
+    if (match) {
+      const detectedItem = match[1].trim();
+      const detectedFoodCourt = match[2].trim();
+      const detectedAmount = match[3].trim();
+
+      const matchedCourt =
+        foodCourts.find(
+          (court) => court.toLowerCase() === detectedFoodCourt.toLowerCase()
+        ) || 'Other(Outside Campus)';
+
+      // Fill the fields only (do not auto-submit)
+      setFormData((prev) => ({
+        ...prev,
+        item: detectedItem || prev.item,
+        foodCourt: matchedCourt,
+        amount: detectedAmount || prev.amount,
+      }));
+
+      toast.success('Voice input processed! Review and click Save to confirm.');
+    } else {
+      toast.error(
+        'Please speak in the correct format: I had [food item] from [food court] and it cost me [price]'
+      );
+    }
+
+    setListening(false);
+  };
+
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    toast.error('Voice recognition failed. Try again.');
+    setListening(false);
+  };
+
+  recognition.onend = () => setListening(false);
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
