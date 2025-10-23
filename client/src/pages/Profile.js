@@ -84,6 +84,7 @@ const Profile = () => {
       });
       
       updateUser({
+        ...user,
         name: formData.name,
         preferences: {
           ...user.preferences,

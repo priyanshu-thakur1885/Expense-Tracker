@@ -259,7 +259,8 @@ const Analytics = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Average Expense</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                ₹{stats.averageExpense.toFixed(2)}
+                ₹{(stats.totalExpenses > 0 ? stats.totalSpent / stats.totalExpenses : 0).toFixed(2)}
+
               </p>
             </div>
             <div className="w-12 h-12 bg-warning-100 dark:bg-warning-900 rounded-lg flex items-center justify-center">

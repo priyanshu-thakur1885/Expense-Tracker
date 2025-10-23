@@ -99,14 +99,16 @@ export const AuthProvider = ({ children }) => {
       } else if (token && token !== 'demo-token-123') {
         try {
           dispatch({ type: 'AUTH_START' });
-          const response = await axios.post('/api/auth/verify', { token });
-          dispatch({
-            type: 'AUTH_SUCCESS',
-            payload: {
-              user: response.data.user,
-              token
-            }
-          });
+          // Inside verifyToken or login
+const response = await axios.get('/api/user/profile'); // GET full profile
+dispatch({
+  type: 'AUTH_SUCCESS',
+  payload: {
+    user: response.data.user, // now includes createdAt
+    token
+  }
+});
+
         } catch (error) {
           localStorage.removeItem('token');
           dispatch({ type: 'AUTH_FAILURE', payload: 'Invalid token' });

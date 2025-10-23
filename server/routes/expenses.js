@@ -127,6 +127,7 @@ router.post('/', authenticateToken, async (req, res) => {
         message: 'Item, amount, and food court are required' 
       });
     }
+    
 
     // For demo mode, we'll simulate saving without actually persisting to DB
     if (req.user._id === '507f1f77bcf86cd799439011') {
@@ -169,24 +170,47 @@ router.post('/', authenticateToken, async (req, res) => {
     );
 
     // Check budget status after adding expense
-    const updatedBudget = await Budget.findOne({ userId: req.user._id });
-    if (updatedBudget) {
-      const percentage = (updatedBudget.currentSpent / updatedBudget.monthlyLimit) * 100;
+const updatedBudget = await Budget.findOne({ userId: req.user._id });
+if (updatedBudget) {
+  const percentage = (updatedBudget.currentSpent / updatedBudget.monthlyLimit) * 100;
 
-      // Trigger notification if budget exceeded
-      if (percentage >= 100) {
-        // Emit socket event for real-time notification
-        const io = req.app.get('io');
-        if (io) {
-          io.to(req.user._id.toString()).emit('budgetExceeded', {
-            spent: updatedBudget.currentSpent,
-            limit: updatedBudget.monthlyLimit,
-            percentage: percentage,
-            exceededAmount: updatedBudget.currentSpent - updatedBudget.monthlyLimit
-          });
-        }
-      }
+  // Trigger notification if budget exceeded
+  if (percentage >= 100) {
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.user._id.toString()).emit('budgetExceeded', {
+        spent: updatedBudget.currentSpent,
+        limit: updatedBudget.monthlyLimit,
+        percentage: percentage,
+        exceededAmount: updatedBudget.currentSpent - updatedBudget.monthlyLimit
+      });
     }
+  }
+}
+// Check daily limit
+const today = new Date();
+today.setHours(0,0,0,0);
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate() + 1);
+
+const todayExpenses = await Expense.find({
+  userId: req.user._id,
+  date: { $gte: today, $lt: tomorrow }
+});
+
+const dailySpent = todayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+if (updatedBudget.dailyLimit && dailySpent > updatedBudget.dailyLimit) {
+  const io = req.app.get('io');
+  if (io) {
+    io.to(req.user._id.toString()).emit('dailyLimitExceeded', {
+      spent: dailySpent,
+      limit: updatedBudget.dailyLimit,
+      exceededAmount: dailySpent - updatedBudget.dailyLimit
+    });
+  }
+}
+
+
 
     res.status(201).json({ success: true, expense });
   } catch (error) {
@@ -427,9 +451,14 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
       // Filter expenses by the selected date
       const targetDateStr = date; // This is in YYYY-MM-DD format
       expenses = allExpenses.filter(expense => {
-        const expenseDateStr = expense.date.toISOString().split('T')[0];
-        return expenseDateStr === targetDateStr;
-      });
+  const expenseDate = new Date(expense.date);
+  return (
+    expenseDate.getFullYear() === startDate.getFullYear() &&
+    expenseDate.getMonth() === startDate.getMonth() &&
+    expenseDate.getDate() === startDate.getDate()
+  );
+});
+
       
       console.log('Found expenses for date', targetDateStr, ':', expenses.length);
       console.log('Filtered expense dates:', expenses.map(exp => exp.date.toISOString().split('T')[0]));
@@ -483,5 +512,49 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Error fetching statistics' });
   }
 });
+// Get dynamic insights and recommendations
+router.get('/insights', authenticateToken, async (req, res) => {
+  const userId = req.user._id;
+  try {
+    const expenses = await Expense.find({ userId });
+    const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+    const categoryStats = {};
+    expenses.forEach(e => {
+      categoryStats[e.category] = (categoryStats[e.category] || 0) + e.amount;
+    });
+
+    const recommendations = [];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const todaySpent = expenses
+      .filter(e => e.date >= today && e.date < tomorrow)
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    const budget = await Budget.findOne({ userId });
+
+    if (budget) {
+      if (todaySpent > budget.dailyLimit) recommendations.push("You've exceeded your daily limit!");
+      if (totalSpent > budget.monthlyLimit) recommendations.push("You've exceeded your monthly budget!");
+      if (todaySpent < budget.dailyLimit * 0.5) recommendations.push("Great! You're below half of your daily limit.");
+    }
+
+    res.json({
+      success: true,
+      insights: {
+        totalSpent,
+        categoryStats,
+        recommendations
+      }
+    });
+  } catch (error) {
+    console.error("Insights error:", error);
+    res.status(500).json({ message: "Error fetching insights" });
+  }
+});
+
 
 module.exports = router;

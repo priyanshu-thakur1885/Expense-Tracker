@@ -217,6 +217,12 @@ export const SocketProvider = ({ children }) => {
       // Emit a custom event that can be listened to by components
       window.dispatchEvent(new CustomEvent('budgetExceeded', { detail: data }));
     });
+    // Daily limit exceeded notification
+newSocket.on('dailyLimitExceeded', (data) => {
+  console.log('📅 Daily limit exceeded notification received:', data);
+  window.dispatchEvent(new CustomEvent('dailyLimitExceeded', { detail: data }));
+});
+
 
     // Error handling
     newSocket.on('error', (error) => {
