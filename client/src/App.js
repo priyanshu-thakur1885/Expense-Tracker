@@ -25,6 +25,15 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 
 function App() {
+  useEffect(() => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .register('/service-worker.js')
+      .then(() => console.log('Service Worker Registered'))
+      .catch(err => console.error('Service Worker Error:', err));
+  }
+}, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
