@@ -1,9 +1,9 @@
 // controllers/bugReportController.js
-import BugReport from '../models/BugReport.js';
-import Notification from '../models/Notification.js';
+const BugReport = require('../models/BugReport');
+const Notification = require('../models/Notification');
 
 // 📌 Create a new bug report
-export const createBugReport = async (req, res) => {
+const createBugReport = async (req, res) => {
   try {
     const {
       title,
@@ -52,7 +52,7 @@ export const createBugReport = async (req, res) => {
 };
 
 // 📌 Get all bug reports (admin)
-export const getAllBugReports = async (req, res) => {
+const getAllBugReports = async (req, res) => {
   try {
     const { status, severity } = req.query;
     const filter = {};
@@ -71,7 +71,7 @@ export const getAllBugReports = async (req, res) => {
 };
 
 // 📌 Close a bug report with remark
-export const closeBugReport = async (req, res) => {
+const closeBugReport = async (req, res) => {
   try {
     const { id } = req.params;
     const { remark } = req.body;
@@ -98,4 +98,10 @@ export const closeBugReport = async (req, res) => {
     console.error('Error closing bug report:', error);
     res.status(500).json({ success: false, message: 'Failed to close bug report' });
   }
+};
+
+module.exports = {
+  createBugReport,
+  getAllBugReports,
+  closeBugReport,
 };
