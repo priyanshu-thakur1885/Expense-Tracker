@@ -10,9 +10,10 @@ dotenv.config();
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({
-  storage: storage,
+  storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 10 * 1024 * 1024, // 10 MB per file
+    fieldSize: 10 * 1024 * 1024 // 10 MB for text fields
   },
   fileFilter: (req, file, cb) => {
     // Allow images and videos
