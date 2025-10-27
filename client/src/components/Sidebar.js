@@ -36,6 +36,7 @@ const Sidebar = () => {
   // Add admin link if user is admin
   if (user?.email === "fun2begin8988@gmail.com") {
     navigation.push({ name: 'Admin Panel', href: '/admin', icon: Crown });
+    
 }
 
 

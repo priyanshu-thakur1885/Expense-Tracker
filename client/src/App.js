@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import AdminBugReports from './pages/AdminBugReports';
 
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
@@ -51,11 +52,31 @@ function App() {
                   }
                 >
                   <Routes>
+
                     {/* ---------- Public Routes ---------- */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
 
                     {/* ---------- Protected Routes ---------- */}
+                    <Route
+  path="/"
+  element={
+    <ProtectedRoute>
+      <Layout />
+    </ProtectedRoute>
+  }
+>
+  <Route index element={<Navigate to="/dashboard" replace />} />
+  <Route path="dashboard" element={<Dashboard />} />
+  <Route path="expenses" element={<Expenses />} />
+  <Route path="add-expense" element={<AddExpense />} />
+  <Route path="edit-expense/:id" element={<EditExpense />} />
+  <Route path="analytics" element={<Analytics />} />
+  <Route path="profile" element={<Profile />} />
+  <Route path="admin" element={<AdminDashboard />} />
+  <Route path="admin/bugreports" element={<AdminBugReports />} />
+</Route>
+
                     <Route
                       path="/"
                       element={

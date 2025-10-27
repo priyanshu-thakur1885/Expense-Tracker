@@ -194,6 +194,7 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
     return res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
   }
 });
+router.put('/bugreport/:id/close', authenticateAdmin, closeBugReport);
 
 // GET /api/bug-report - list (admin)
 router.get('/', async (req, res) => {

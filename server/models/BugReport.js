@@ -88,6 +88,9 @@ const bugReportSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  
+adminRemark: { type: String, default: "" },
+status: { type: String, enum: ["open", "closed"], default: "open" },
   // Timestamps
   reportedAt: {
     type: Date,
@@ -104,6 +107,8 @@ const bugReportSchema = new mongoose.Schema({
   timestamps: true,
   collection: 'bugreports'
 });
+
+
 
 // Index for better query performance
 bugReportSchema.index({ status: 1, severity: 1, reportedAt: -1 });
