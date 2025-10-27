@@ -55,7 +55,7 @@ const BugReport = ({ isOpen, onClose }) => {
         formData.append('attachments', file);
       });
 
-      console.log('🐛 Submitting bug report to:', `${API_BASE}/api/bug-report`);
+      console.log('🐛 Submitting bug report to:', `${API_BASE}/api/bugreport`);
       console.log('📊 Form data being sent:', {
         title: bugReport.title,
         description: bugReport.description,
@@ -66,7 +66,7 @@ const BugReport = ({ isOpen, onClose }) => {
         attachmentsCount: attachments.length
       });
 
-      const response = await fetch(`${API_BASE}/api/bug-report`, {
+      const response = await fetch(`${API_BASE}/api/bugreport`, {
         method: 'POST',
         body: formData,
       });
