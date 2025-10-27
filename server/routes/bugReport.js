@@ -5,6 +5,8 @@ const mongoose = require('mongoose');
 const BugReport = require('../models/BugReport');
 const router = express.Router();
 const dotenv = require('dotenv');
+const { authenticateAdmin } = require('../middleware/authMiddleware');
+const { closeBugReport } = require('../controller/bugReportController');
 dotenv.config();
 
 // Configure multer for file uploads
