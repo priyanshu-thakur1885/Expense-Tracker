@@ -2,7 +2,7 @@
   "name": "expense-tracker",
   "version": "1.0.0",
   "description": "Expense Tracker for LPU Hostel Students",
-  "main": "server/server.js",
+  "main": "server/server.js",      
   "type": "commonjs",
   "scripts": {
     "start": "cd server && npm start",
