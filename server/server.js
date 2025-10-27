@@ -1,4 +1,5 @@
-  const express = require('express');
+
+const express = require('express');
   const mongoose = require('mongoose');
   const cors = require('cors');
   const helmet = require('helmet');
@@ -90,14 +91,17 @@
       });
     })
     .catch(err => console.error('MongoDB connection error:', err));
-
+// Ensure uploads folder exists
+const fs = require('fs');
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
+app.use('/uploads', express.static('uploads'));
   // Routes
   app.use('/api/auth', authRoutes);
   app.use('/api/expenses', expenseRoutes);
   app.use('/api/budget', budgetRoutes);
   app.use('/api/user', userRoutes);
   app.use('/api/admin', adminRoutes);
-  app.use('/api/bug-report', bugReportRoutes);
+app.use('/api/bugreport', bugReportRoutes); // ✅ corrected
   // AI routes removed
 
   // Health check endpoint

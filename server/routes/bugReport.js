@@ -4,6 +4,8 @@ const multer = require('multer');
 const mongoose = require('mongoose');
 const BugReport = require('../models/BugReport');
 const router = express.Router();
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();

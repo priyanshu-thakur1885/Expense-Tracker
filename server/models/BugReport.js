@@ -1,3 +1,4 @@
+  
 const mongoose = require('mongoose');
 
 const bugReportSchema = new mongoose.Schema({
