@@ -128,7 +128,7 @@ const Analytics = () => {
     } else {
       const dailyEntries = Object.entries(stats.dailyStats)
         .sort(([a], [b]) => new Date(a) - new Date(b))
-        .slice(-7); // Last 7 days
+        .slice(-30); // Last 30 days
       
       return dailyEntries.map(([date, amount]) => ({
         date: format(new Date(date), 'MMM dd'),
