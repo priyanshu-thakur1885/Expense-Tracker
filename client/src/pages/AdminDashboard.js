@@ -181,7 +181,7 @@ const AdminDashboard = () => {
       queryParams.append('page', bugReportFilters.page);
       queryParams.append('limit', bugReportFilters.limit);
 
-      const response = await fetch(`${API_BASE}/api/bug-report?${queryParams}`, {
+      const response = await fetch(`${API_BASE}/api/bugreport?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -276,7 +276,7 @@ const AdminDashboard = () => {
             {[
               { id: 'overview', name: 'Overview', icon: BarChart3 },
               { id: 'users', name: 'Users', icon: Users },
-              { id: 'bug-reports', name: 'Bug Reports', icon: Bug },
+              { id: 'bugreport', name: 'Bug Reports', icon: Bug },
               { id: 'messaging', name: 'Messaging', icon: MessageCircle },
               { id: 'notifications', name: 'Notifications', icon: Send }
             ].map((tab) => (
@@ -408,7 +408,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Bug Reports Tab */}
-        {activeTab === 'bug-reports' && (
+        {activeTab === 'bugreport' && (
           <div className="space-y-6">
             {/* Bug Reports List */}
             <div className="bg-white rounded-lg shadow">
@@ -821,7 +821,7 @@ const AdminDashboard = () => {
                               <div className="flex items-center space-x-2">
                                 {attachment.mimetype.startsWith('image/') ? (
                                   <img
-                                    src={`${API_BASE}/api/bug-report/${selectedBugReport._id}/attachment/${attachment.filename}`}
+                                    src={`${API_BASE}/api/bugreport/${selectedBugReport._id}/attachment/${attachment.filename}`}
                                     alt={attachment.originalName}
                                     className="w-12 h-12 object-cover rounded"
                                   />
@@ -840,7 +840,7 @@ const AdminDashboard = () => {
                                 </div>
                               </div>
                               <a
-                                href={`${API_BASE}/api/bug-report/${selectedBugReport._id}/attachment/${attachment.filename}`}
+                                href={`${API_BASE}/api/bugreport/${selectedBugReport._id}/attachment/${attachment.filename}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:text-blue-800"
