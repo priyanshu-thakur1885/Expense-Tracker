@@ -79,17 +79,28 @@
   app.use(passport.session());
 
   // MongoDB connection
-  mongoose.connect(process.env.MONGODB_URI)
-    .then(() => {
-      console.log('Connected to MongoDB');
-      // Log the current database name to verify connection
-      console.log('Connected to database:', mongoose.connection.name);
-      // List all collections
-      mongoose.connection.db.listCollections().toArray().then(collections => {
-        console.log('Available collections:', collections.map(c => c.name));
-      });
-    })
-    .catch(err => console.error('MongoDB connection error:', err));
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 15000, // 15 seconds max wait
+})
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    console.log('Database:', mongoose.connection.name);
+    mongoose.connection.db.listCollections().toArray().then(collections => {
+      console.log('Collections:', collections.map(c => c.name));
+    });
+
+    // Start the server *only after* MongoDB connects
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔌 Socket.IO server initialized`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1); // Exit to trigger Render restart
+  });
+
 // Ensure uploads folder exists
 const fs = require('fs');
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
@@ -129,9 +140,3 @@ app.use('/api/bugreport', bugReportRoutes); // ✅ corrected
   // Initialize Socket.IO service
   const socketService = new SocketService(io);
 
-  // Start server
-  server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔌 Socket.IO server initialized`);
-  });
