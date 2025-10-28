@@ -113,6 +113,8 @@ app.use('/uploads', express.static('uploads'));
   app.use('/api/user', userRoutes);
   app.use('/api/admin', adminRoutes);
 app.use('/api/bugreport', bugReportRoutes); // ✅ corrected
+app.use("/api/bugreport", require("./routes/bugReport"));
+
   // AI routes removed
 
   // Health check endpoint

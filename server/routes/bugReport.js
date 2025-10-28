@@ -6,9 +6,11 @@ const BugReport = require('../models/BugReport');
 const router = express.Router();
 const dotenv = require('dotenv');
 const { authenticateAdmin } = require('../middleware/authMiddleware');
-const { closeBugReport } = require('../controller/bugReportController');
+const { createBugReport, getAllBugReports, closeBugReport } = require('../controllers/bugReportController');
 dotenv.config();
-
+router.post('/', createBugReport);
+router.get('/', getAllBugReports);
+router.put('/close/:id', closeBugReport);
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -196,7 +198,7 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
     return res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
   }
 });
-router.put('/bugreport/:id/close', authenticateAdmin, closeBugReport);
+
 
 // GET /api/bug-report - list (admin)
 router.get('/', async (req, res) => {
