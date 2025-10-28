@@ -6,7 +6,7 @@ const BugReport = require('../models/BugReport');
 const router = express.Router();
 const dotenv = require('dotenv');
 const { authenticateAdmin } = require('../middleware/authMiddleware');
-const { createBugReport, getAllBugReports, closeBugReport } = require('../controllers/bugReportController');
+const { createBugReport, getAllBugReports, closeBugReport } = require('../controller/bugReportController');
 dotenv.config();
 router.post('/', createBugReport);
 router.get('/', getAllBugReports);
