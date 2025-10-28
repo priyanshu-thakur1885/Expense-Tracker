@@ -6,11 +6,8 @@ const BugReport = require('../models/BugReport');
 const router = express.Router();
 const dotenv = require('dotenv');
 const { authenticateAdmin } = require('../middleware/authMiddleware');
-const { createBugReport, getAllBugReports, closeBugReport } = require('../controller/bugReportController');
 dotenv.config();
-router.post('/', createBugReport);
-router.get('/', getAllBugReports);
-router.put('/close/:id', closeBugReport);
+
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({
