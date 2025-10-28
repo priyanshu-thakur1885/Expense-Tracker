@@ -1,107 +1,44 @@
-// controllers/bugReportController.js
-const BugReport = require('../models/BugReport');
-const Notification = require('../models/Notification');
+const BugReport = require("../models/BugReport");
 
-// 📌 Create a new bug report
-const createBugReport = async (req, res) => {
+exports.createBugReport = async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      steps,
-      severity,
-      userEmail,
-      userName,
-      userPhoto,
-      timestamp,
-      userAgent,
-      url,
-    } = req.body;
-
-    // handle attachments
-    const attachments = (req.files || []).map(file => ({
-      filename: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size,
-      data: file.buffer,
-    }));
-
-    const bugReport = new BugReport({
-      title,
-      description,
-      steps,
-      severity,
-      userEmail,
-      userName,
-      userPhoto,
-      timestamp,
-      userAgent,
-      url,
-      attachments,
-      status: 'open',
-      reportedAt: new Date(),
-    });
-
-    await bugReport.save();
-
-    res.status(201).json({ success: true, message: 'Bug report submitted successfully', bugReport });
+    const bug = new BugReport(req.body);
+    await bug.save();
+    res.status(201).json({ success: true, message: "Bug report created successfully" });
   } catch (error) {
-    console.error('Error creating bug report:', error);
-    res.status(500).json({ success: false, message: 'Failed to submit bug report' });
+    console.error("Error creating bug report:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-// 📌 Get all bug reports (admin)
-const getAllBugReports = async (req, res) => {
+exports.getAllBugReports = async (req, res) => {
   try {
-    const { status, severity } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
-    if (severity) filter.severity = severity;
-
-    const bugReports = await BugReport.find(filter)
-      .sort({ reportedAt: -1 })
-      .select('-attachments.data');
-
-    res.status(200).json({ success: true, bugReports });
+    const bugs = await BugReport.find().sort({ reportedAt: -1 });
+    res.json({ success: true, bugReports: bugs });
   } catch (error) {
-    console.error('Error fetching bug reports:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch bug reports' });
+    console.error("Error fetching bug reports:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-// 📌 Close a bug report with remark
-const closeBugReport = async (req, res) => {
+exports.closeBugReport = async (req, res) => {
   try {
     const { id } = req.params;
     const { remark } = req.body;
 
-    const bugReport = await BugReport.findById(id);
-    if (!bugReport) return res.status(404).json({ success: false, message: 'Bug report not found' });
+    const bug = await BugReport.findById(id);
+    if (!bug) {
+      return res.status(404).json({ success: false, message: "Bug report not found" });
+    }
 
-    bugReport.status = 'closed';
-    bugReport.closedAt = new Date();
-    bugReport.remark = remark;
-    await bugReport.save();
+    bug.status = "closed";
+    bug.adminRemark = remark || "No remark provided";
+    bug.closedAt = new Date();
 
-    // Create notification for the user who submitted it
-    await Notification.create({
-      userEmail: bugReport.userEmail,
-      title: 'Bug Report Closed',
-      message: `Your bug report "${bugReport.title}" has been marked as closed. Remark: ${remark}`,
-      type: 'bug',
-      createdAt: new Date(),
-    });
-
-    res.status(200).json({ success: true, message: 'Bug report closed successfully', bugReport });
+    await bug.save();
+    res.json({ success: true, message: "Bug report closed successfully", bug });
   } catch (error) {
-    console.error('Error closing bug report:', error);
-    res.status(500).json({ success: false, message: 'Failed to close bug report' });
+    console.error("Error closing bug report:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
-};
-
-module.exports = {
-  createBugReport,
-  getAllBugReports,
-  closeBugReport,
 };
