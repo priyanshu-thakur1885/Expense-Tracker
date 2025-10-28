@@ -66,10 +66,16 @@ const BugReport = ({ isOpen, onClose }) => {
         attachmentsCount: attachments.length
       });
 
-      const response = await fetch(`${API_BASE}/api/bugreport`, {
-        method: 'POST',
-        body: formData,
-      });
+      const token = localStorage.getItem('token'); // Or adjust if you store it elsewhere (like context)
+
+const response = await fetch(`${API_BASE}/api/bugreport`, {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${token}`,  // ✅ Required for backend verification
+  },
+  body: formData,
+});
+
 
       console.log('📡 Response status:', response.status);
       console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
