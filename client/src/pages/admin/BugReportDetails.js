@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { closeBugReport } from "../../services/bugReportService";
+
 
 function BugReportDetails({ bug, onClose }) {
   const [remark, setRemark] = useState("");
@@ -14,12 +16,9 @@ function BugReportDetails({ bug, onClose }) {
 
     try {
       setLoading(true);
-      const res = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/bugreport/close/${bug._id}`,
-        { remark }
-      );
+      const res = await closeBugReport(bug._id, remark);
 
-      if (res.data.success) {
+      if (res.success) {
         setSuccessMsg("Bug closed successfully ✅");
         setTimeout(() => window.location.reload(), 1200);
       }
