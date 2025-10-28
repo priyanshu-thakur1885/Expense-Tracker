@@ -2,43 +2,56 @@ const BugReport = require("../models/BugReport");
 
 exports.createBugReport = async (req, res) => {
   try {
-    const bug = new BugReport(req.body);
-    await bug.save();
-    res.status(201).json({ success: true, message: "Bug report created successfully" });
-  } catch (error) {
-    console.error("Error creating bug report:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
+    const {
+      title,
+  description,
+  severity,
+  steps,
+  userEmail,
+  userName,
+  userPhoto
+    } = req.body;
 
-exports.getAllBugReports = async (req, res) => {
-  try {
-    const bugs = await BugReport.find().sort({ reportedAt: -1 });
-    res.json({ success: true, bugReports: bugs });
-  } catch (error) {
-    console.error("Error fetching bug reports:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
+    // Capture from headers/environment
+    const userAgent = req.headers["user-agent"] || "Unknown";
+    const url = req.headers["referer"] || "Unknown";
 
-exports.closeBugReport = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { remark } = req.body;
-
-    const bug = await BugReport.findById(id);
-    if (!bug) {
-      return res.status(404).json({ success: false, message: "Bug report not found" });
+    // Handle attachments if any (Multer)
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      attachments = req.files.map(file => ({
+        filename: file.filename,
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        data: file.buffer,
+      }));
     }
 
-    bug.status = "closed";
-    bug.adminRemark = remark || "No remark provided";
-    bug.closedAt = new Date();
+    const bug = new BugReport({
+      title,
+      description,
+      severity: severity || "medium",
+      steps,
+      attachments,
+      userEmail,
+      userName,
+      userPhoto,
+      userAgent,
+      url,
+    });
 
     await bug.save();
-    res.json({ success: true, message: "Bug report closed successfully", bug });
+    res.status(201).json({
+      success: true,
+      message: "Bug report created successfully",
+      bug,
+    });
   } catch (error) {
-    console.error("Error closing bug report:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    console.error("Error creating bug report:", error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
   }
 };
