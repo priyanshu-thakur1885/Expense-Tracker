@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Mic } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import notificationService from '../services/notificationService';
 import axios from 'axios';
