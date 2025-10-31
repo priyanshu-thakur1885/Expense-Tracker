@@ -2,7 +2,7 @@
   "name": "expense-tracker",
   "version": "1.0.0",
   "description": "Expense Tracker for LPU Hostel Students",
-  "main": "server/server.js",      
+  "main": "server/server.js",
   "type": "commonjs",
   "scripts": {
     "start": "cd server && npm start",
@@ -29,6 +29,7 @@
     "mongodb": "4.1",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "tesseract.js": "^6.0.1"
   }
 }

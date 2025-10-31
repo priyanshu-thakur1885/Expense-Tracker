@@ -7,6 +7,9 @@ import notificationService from '../services/notificationService';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { Save, ArrowLeft, Mic, Camera } from 'lucide-react';
+import Tesseract from 'tesseract.js';
+
 
 const AddExpense = () => {
   const navigate = useNavigate();
@@ -107,6 +110,54 @@ const handleVoiceInput = () => {
   recognition.onend = () => setListening(false);
 };
 
+// 📷 Bill Scan (OCR using Tesseract.js)
+const handleScanBill = async () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.click();
+
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    toast('Extracting text from bill... 🧾', { icon: '🧠' });
+    setLoading(true);
+
+    try {
+      const result = await Tesseract.recognize(file, 'eng');
+      const text = result.data.text.toLowerCase();
+      console.log('Extracted text:', text);
+
+      // 🧠 Try to auto-detect key info
+      const amountMatch = text.match(/₹\s?(\d+(\.\d{1,2})?)/) || text.match(/total[:\s]*(\d+)/);
+      const dateMatch = text.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/);
+      const itemMatch =
+        text.match(/item[:\s]*([a-zA-Z\s]+)/) ||
+        text.split('\n').find(line => line.length > 3 && !line.includes('total') && !line.includes('gst'));
+
+      const detectedAmount = amountMatch ? amountMatch[1] : '';
+      const detectedDate = dateMatch ? dateMatch[0] : new Date().toLocaleDateString('en-CA');
+      const detectedItem = itemMatch ? itemMatch.trim() : '';
+
+      setFormData(prev => ({
+        ...prev,
+        item: detectedItem || prev.item,
+        amount: detectedAmount || prev.amount,
+        date: detectedDate || prev.date,
+      }));
+
+      toast.success('Bill scanned and data filled automatically!');
+    } catch (error) {
+      console.error('OCR Error:', error);
+      toast.error('Failed to scan the bill. Try again with a clearer image.');
+    } finally {
+      setLoading(false);
+    }
+  };
+};
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -185,6 +236,16 @@ const handleVoiceInput = () => {
           >
             <Mic className="w-5 h-5" />
           </button>
+
+          {/* 📷 Scan Bill button */}
+<button
+  type="button"
+  onClick={handleScanBill}
+  className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 ml-2"
+>
+  <Camera className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+</button>
+
         </div>
 
         {/* Instruction Message */}

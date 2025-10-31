@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Tesseract from 'tesseract.js';
+import { Camera } from 'lucide-react';
+
 import { 
   TrendingUp, 
   DollarSign, 
@@ -24,6 +27,8 @@ const Dashboard = () => {
   const notifications = useNotifications();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+
 
   useEffect(() => {
     fetchDashboardData();
@@ -48,6 +53,38 @@ const Dashboard = () => {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+  const handleBillScan = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setScanning(true);
+
+    try {
+      const { data: { text } } = await Tesseract.recognize(file, 'eng');
+      console.log('Extracted Text:', text);
+
+      // Extract date
+      const date = text.match(/\d{2}[-/]\d{2}[-/]\d{4}/)?.[0] || '';
+      
+      // Extract price (₹ or numeric)
+      const prices = text.match(/\₹?\d+(\.\d{1,2})?/g) || [];
+      const price = prices[0] || '';
+      
+      // Extract probable item (first meaningful line)
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      const probableItem = lines.find(l => /item|food|meal|rice|pizza|burger|sandwich/i.test(l)) || lines[0] || '';
+
+      toast.success('Bill scanned successfully!');
+      
+      // Navigate to Add Expense with extracted data
+      navigate('/add-expense', { state: { date, probableItem, price } });
+
+    } catch (error) {
+      console.error('Error scanning bill:', error);
+      toast.error('Failed to scan bill.');
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -131,6 +168,19 @@ const Dashboard = () => {
               <Plus className="w-5 h-5" />
               <span>Add Expense</span>
             </motion.button>
+            <label className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center space-x-2 cursor-pointer transition-colors duration-200">
+  <Camera className="w-5 h-5" />
+  <span>{scanning ? 'Scanning...' : 'Scan Bill'}</span>
+  <input 
+    type="file" 
+    accept="image/*" 
+    capture="environment" 
+    onChange={handleBillScan} 
+    className="hidden"
+  />
+</label>
+{scanning && <p className="text-sm text-gray-200 mt-2">Extracting text from bill...</p>}
+
           </div>
         </div>
       </motion.div>
