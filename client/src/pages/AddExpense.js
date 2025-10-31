@@ -110,52 +110,116 @@ const handleVoiceInput = () => {
 };
 
 // 📷 Bill Scan (OCR using Tesseract.js)
+
+// 📷 Enhanced Bill Scan with Camera & Gallery Options
 const handleScanBill = async () => {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.click();
+  const choice = window.confirm("Do you want to open the camera?\n\nPress OK for Camera\nPress Cancel for Gallery");
 
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    toast('Extracting text from bill... 🧾', { icon: '🧠' });
-    setLoading(true);
-
+  if (choice) {
+    // --- CAMERA SCAN ---
     try {
-      const result = await Tesseract.recognize(file, 'eng');
-      const text = result.data.text.toLowerCase();
-      console.log('Extracted text:', text);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
 
-      // 🧠 Try to auto-detect key info
-      const amountMatch = text.match(/₹\s?(\d+(\.\d{1,2})?)/) || text.match(/total[:\s]*(\d+)/);
-      const dateMatch = text.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/);
-      const itemMatch =
-        text.match(/item[:\s]*([a-zA-Z\s]+)/) ||
-        text.split('\n').find(line => line.length > 3 && !line.includes('total') && !line.includes('gst'));
+      // Show video preview overlay
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100vw';
+      overlay.style.height = '100vh';
+      overlay.style.background = 'rgba(0,0,0,0.8)';
+      overlay.style.display = 'flex';
+      overlay.style.flexDirection = 'column';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.zIndex = '9999';
+      overlay.style.color = 'white';
+      overlay.innerHTML = `
+        <p style="margin-bottom: 12px;">Align the bill in the frame and click "Capture"</p>
+      `;
 
-      const detectedAmount = amountMatch ? amountMatch[1] : '';
-      const detectedDate = dateMatch ? dateMatch[0] : new Date().toLocaleDateString('en-CA');
-      const detectedItem = itemMatch ? itemMatch.trim() : '';
+      const captureButton = document.createElement('button');
+      captureButton.innerText = 'Capture';
+      captureButton.style.padding = '8px 16px';
+      captureButton.style.background = '#2563eb';
+      captureButton.style.border = 'none';
+      captureButton.style.borderRadius = '6px';
+      captureButton.style.cursor = 'pointer';
+      captureButton.style.color = 'white';
 
-      setFormData(prev => ({
-        ...prev,
-        item: detectedItem || prev.item,
-        amount: detectedAmount || prev.amount,
-        date: detectedDate || prev.date,
-      }));
+      overlay.appendChild(video);
+      overlay.appendChild(captureButton);
+      document.body.appendChild(overlay);
 
-      toast.success('Bill scanned and data filled automatically!');
-    } catch (error) {
-      console.error('OCR Error:', error);
-      toast.error('Failed to scan the bill. Try again with a clearer image.');
-    } finally {
-      setLoading(false);
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      captureButton.onclick = async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg'));
+        stream.getTracks().forEach((track) => track.stop()); // close camera
+        document.body.removeChild(overlay);
+
+        await processImageForOCR(imageBlob);
+      };
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      toast.error('Camera access denied or not available.');
     }
-  };
+  } else {
+    // --- GALLERY PICK ---
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.click();
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (file) await processImageForOCR(file);
+    };
+  }
 };
 
+// 🧠 Common OCR logic
+const processImageForOCR = async (imageFile) => {
+  toast('Extracting text from bill... 🧾', { icon: '🧠' });
+  setLoading(true);
+  try {
+    const result = await Tesseract.recognize(imageFile, 'eng');
+    const text = result.data.text.toLowerCase();
+    console.log('Extracted text:', text);
+
+    const amountMatch = text.match(/₹\s?(\d+(\.\d{1,2})?)/) || text.match(/total[:\s]*(\d+)/);
+    const dateMatch = text.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/);
+    const itemMatch =
+      text.match(/item[:\s]*([a-zA-Z\s]+)/) ||
+      text.split('\n').find(line => line.length > 3 && !line.includes('total') && !line.includes('gst'));
+
+    const detectedAmount = amountMatch ? amountMatch[1] : '';
+    const detectedDate = dateMatch ? dateMatch[0] : new Date().toLocaleDateString('en-CA');
+    const detectedItem = itemMatch ? itemMatch.trim() : '';
+
+    setFormData(prev => ({
+      ...prev,
+      item: detectedItem || prev.item,
+      amount: detectedAmount || prev.amount,
+      date: detectedDate || prev.date,
+    }));
+
+    toast.success('Bill scanned successfully!');
+  } catch (error) {
+    console.error('OCR Error:', error);
+    toast.error('Failed to extract data. Try again with a clearer image.');
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const handleSubmit = async (e) => {
