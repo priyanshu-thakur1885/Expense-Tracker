@@ -36,6 +36,15 @@ const Dashboard = () => {
   const [scanning, setScanning] = useState(false);
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Log component mount
+  useEffect(() => {
+    console.log('Dashboard component mounted');
+    return () => {
+      console.log('Dashboard component unmounted');
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -63,10 +72,12 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      console.log('Fetching dashboard data...');
       const response = await axios.get('/api/user/dashboard');
       console.log('Dashboard API response:', response.data);
       if (response.data && response.data.dashboard) {
         setDashboardData(response.data.dashboard);
+        console.log('Dashboard data set successfully');
       } else {
         console.error('Invalid dashboard data structure:', response.data);
         toast.error('Invalid dashboard data received');
@@ -80,6 +91,7 @@ const Dashboard = () => {
         console.error('Network Error:', error.request);
         toast.error('Network error: Could not reach server');
       } else {
+        console.error('Unknown error:', error);
         toast.error('Failed to load dashboard data');
       }
     } finally {
@@ -119,6 +131,37 @@ const Dashboard = () => {
     }
   };
 
+  // Error boundary catch
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-red-50 dark:bg-red-900/20">
+        <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Something went wrong
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{error.message}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              fetchDashboardData();
+            }}
+            className="btn btn-primary"
+          >
+            Try Again
+          </button>
+          <details className="mt-4 text-left">
+            <summary className="cursor-pointer text-sm text-gray-500">Error details</summary>
+            <pre className="mt-2 text-xs bg-gray-100 dark:bg-gray-700 p-2 rounded overflow-auto">
+              {error.stack}
+            </pre>
+          </details>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -131,6 +174,15 @@ const Dashboard = () => {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 dark:text-gray-400">Failed to load dashboard data</p>
+        <button
+          onClick={() => {
+            setLoading(true);
+            fetchDashboardData();
+          }}
+          className="mt-4 btn btn-primary"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -184,8 +236,18 @@ const Dashboard = () => {
     }
   };
 
+  // Always render at least something visible for debugging
+  console.log('Dashboard render - user:', user, 'dashboardData:', dashboardData, 'loading:', loading);
+
   return (
     <div className="space-y-6">
+      {/* Debug info - remove later */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-100 dark:bg-yellow-900/20 p-2 text-xs text-center">
+          Dashboard Component Rendered | User: {user?.name || 'No user'} | Loading: {loading ? 'Yes' : 'No'} | Data: {dashboardData ? 'Yes' : 'No'}
+        </div>
+      )}
+      
       {/* Welcome Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
