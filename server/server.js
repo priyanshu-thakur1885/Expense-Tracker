@@ -17,6 +17,7 @@
   const userRoutes = require('./routes/user');
   const adminRoutes = require('./routes/admin');
   const bugReportRoutes = require('./routes/bugReport');
+  const paymentRoutes = require('./routes/payment');
 
   // Import passport configuration
   require('./config/passport');
@@ -112,7 +113,8 @@ app.use('/uploads', express.static('uploads'));
   app.use('/api/budget', budgetRoutes);
   app.use('/api/user', userRoutes);
   app.use('/api/admin', adminRoutes);
-app.use('/api/bugreport', bugReportRoutes); // ✅ corrected
+  app.use('/api/bugreport', bugReportRoutes);
+  app.use('/api/payment', paymentRoutes);
 
 
   // AI routes removed

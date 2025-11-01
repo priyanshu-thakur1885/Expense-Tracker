@@ -26,6 +26,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import FloatingChat from '../components/FloatingChat';
+import { createPaymentOrder, verifyPayment, getSubscription } from '../services/paymentService';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -37,6 +38,8 @@ const Dashboard = () => {
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [error, setError] = useState(null);
+  const [subscription, setSubscription] = useState(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   // Log component mount
   useEffect(() => {
@@ -49,7 +52,128 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchSubscription();
   }, []);
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const fetchSubscription = async () => {
+    try {
+      const response = await getSubscription();
+      if (response.success) {
+        setSubscription(response.subscription);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+  };
+
+  const handlePayment = async (planName) => {
+    const planMap = {
+      'Basic': 'basic',
+      'Premium': 'premium',
+      'Pro': 'pro'
+    };
+
+    const planKey = planMap[planName];
+    
+    if (planKey === 'basic') {
+      toast.info('Basic plan is already free!');
+      return;
+    }
+
+    // Check if already subscribed to this or higher plan
+    if (subscription && subscription.plan === planKey) {
+      toast.info(`You're already on the ${planName} plan!`);
+      return;
+    }
+
+    if (subscription && subscription.status === 'active') {
+      if ((planKey === 'premium' && subscription.plan === 'pro') || 
+          (planKey === 'pro' && subscription.plan === 'premium')) {
+        toast.info('You already have an active subscription. Please wait for it to expire before upgrading.');
+        return;
+      }
+    }
+
+    setProcessingPayment(true);
+    
+    try {
+      // Create order
+      const orderResponse = await createPaymentOrder(planKey);
+      
+      if (!orderResponse.success || !orderResponse.order) {
+        throw new Error('Failed to create payment order');
+      }
+
+      const { order } = orderResponse;
+
+      // Razorpay options
+      const options = {
+        key: order.key,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Expense Tracker',
+        description: `${planName} Plan Subscription`,
+        order_id: order.id,
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+        },
+        theme: {
+          color: '#3b82f6'
+        },
+        handler: async (response) => {
+          try {
+            // Verify payment
+            const verifyResponse = await verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              plan: planKey
+            });
+
+            if (verifyResponse.success) {
+              toast.success(`🎉 ${planName} plan activated successfully!`);
+              await fetchSubscription();
+              setProcessingPayment(false);
+            } else {
+              throw new Error('Payment verification failed');
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            toast.error('Payment verification failed. Please contact support.');
+            setProcessingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setProcessingPayment(false);
+            toast.error('Payment cancelled');
+          }
+        }
+      };
+
+      // Open Razorpay checkout
+      const razorpay = window.Razorpay(options);
+      razorpay.open();
+      
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+      setProcessingPayment(false);
+    }
+  };
 
   // Auto-slide plans every 3 seconds (paused on hover)
   useEffect(() => {
@@ -290,12 +414,12 @@ const Dashboard = () => {
         </div>
       </motion.div>
 
-      {/* Subscription Plans Banner - Compact */}
+      {/* Subscription Plans Banner */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+        className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
@@ -312,121 +436,146 @@ const Dashboard = () => {
                   name: "Basic",
                   price: "Free",
                   period: "",
-                  icon: <Target className="w-4 h-4" />,
+                  icon: <Target className="w-5 h-5" />,
                   gradient: "from-blue-500 to-blue-600",
-                  features: ["Basic tracking", "Budget limit", "Simple analytics"],
+                  features: [
+                    "Basic expense tracking",
+                    "Monthly budget limit",
+                    "Simple analytics",
+                    "Basic notifications"
+                  ],
                   popular: false
                 },
                 {
                   name: "Premium",
                   price: "₹99",
-                  period: "/mo",
-                  icon: <Zap className="w-4 h-4" />,
+                  period: "/month",
+                  icon: <Zap className="w-5 h-5" />,
                   gradient: "from-purple-500 to-purple-600",
-                  features: ["Unlimited expenses", "Advanced analytics", "Bill scanning", "Excel export"],
+                  features: [
+                    "Unlimited expenses",
+                    "Advanced analytics & charts",
+                    "Bill scanning (OCR)",
+                    "Export to Excel",
+                    "Priority support",
+                    "Smart insights & AI recommendations"
+                  ],
                   popular: true
                 },
                 {
                   name: "Pro",
                   price: "₹299",
-                  period: "/mo",
-                  icon: <Crown className="w-4 h-4" />,
+                  period: "/month",
+                  icon: <Crown className="w-5 h-5" />,
                   gradient: "from-yellow-500 to-orange-600",
-                  features: ["All Premium features", "Multiple budgets", "API access", "24/7 support"],
+                  features: [
+                    "Everything in Premium",
+                    "Custom categories & tags",
+                    "Multiple budgets",
+                    "Advanced reporting",
+                    "API access",
+                    "24/7 priority support"
+                  ],
                   popular: false
                 }
               ].map((plan, index) => (
                 <div
                   key={index}
-                  className="w-full flex-shrink-0"
+                  className="w-full flex-shrink-0 px-6 py-5"
                 >
-                  <div className={`relative bg-gradient-to-r ${plan.gradient} rounded-lg p-4 text-white`}>
+                  <div className={`relative bg-gradient-to-r ${plan.gradient} rounded-xl p-5 text-white`}>
                     {plan.popular && (
-                      <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-xs font-bold flex items-center space-x-1">
-                        <Sparkles className="w-2.5 h-2.5" />
+                      <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1">
+                        <Sparkles className="w-3 h-3" />
                         <span>POPULAR</span>
                       </div>
                     )}
                     
-                    <div className="flex items-center justify-between">
-                      {/* Left: Plan Info */}
-                      <div className="flex items-center space-x-3 flex-1">
-                        <div className="bg-white/20 rounded-lg p-1.5">
+                    {/* Header: Plan Name, Icon, and Price */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-white/20 rounded-lg p-2">
                           {plan.icon}
                         </div>
                         <div>
+                          <h3 className="text-2xl font-bold mb-1">{plan.name}</h3>
                           <div className="flex items-baseline space-x-1">
-                            <span className="text-2xl font-bold">{plan.name}</span>
-                          </div>
-                          <div className="flex items-baseline space-x-1">
-                            <span className="text-xl font-bold">{plan.price}</span>
+                            <span className="text-3xl font-bold">{plan.price}</span>
                             {plan.period && (
-                              <span className="text-sm opacity-90">{plan.period}</span>
+                              <span className="text-lg opacity-90 ml-1">{plan.period}</span>
                             )}
                           </div>
                         </div>
                       </div>
-
-                      {/* Center: Features */}
-                      <div className="hidden md:flex items-center space-x-4 flex-1 justify-center">
-                        {plan.features.slice(0, 3).map((feature, featureIndex) => (
-                          <div key={featureIndex} className="flex items-center space-x-1">
-                            <Check className="w-3 h-3 flex-shrink-0" />
-                            <span className="text-xs opacity-95">{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Right: Button */}
-                      <div className="flex-shrink-0">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => {
-                            toast.success(`${plan.name} plan selected! Coming soon...`);
-                          }}
-                          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                            plan.popular
-                              ? 'bg-white text-purple-600 hover:bg-gray-100'
-                              : 'bg-white/20 hover:bg-white/30 backdrop-blur-sm'
-                          }`}
-                        >
-                          {plan.price === "Free" ? "Current" : "Upgrade"}
-                        </motion.button>
-                      </div>
                     </div>
+
+                    {/* Features Grid - Shows all features */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-5">
+                      {plan.features.map((feature, featureIndex) => (
+                        <div key={featureIndex} className="flex items-start space-x-2">
+                          <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                          <span className="text-sm opacity-95">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Upgrade Button - Full width and prominent */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handlePayment(plan.name)}
+                      disabled={processingPayment || (plan.price === "Free" && subscription?.plan === 'basic')}
+                      className={`w-full py-3 rounded-lg font-semibold text-base transition-colors ${
+                        plan.popular
+                          ? 'bg-white text-purple-600 hover:bg-gray-100 shadow-lg'
+                          : 'bg-white/20 hover:bg-white/30 backdrop-blur-sm'
+                      } ${processingPayment ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {processingPayment ? (
+                        <span className="flex items-center justify-center space-x-2">
+                          <LoadingSpinner size="sm" />
+                          <span>Processing...</span>
+                        </span>
+                      ) : plan.price === "Free" ? (
+                        subscription?.plan === 'basic' ? "Current Plan" : "Free Plan"
+                      ) : subscription?.plan === plan.name.toLowerCase() ? (
+                        "✓ Active Plan"
+                      ) : (
+                        `Upgrade to ${plan.name}`
+                      )}
+                    </motion.button>
                   </div>
                 </div>
               ))}
             </motion.div>
           </div>
 
-          {/* Navigation Arrows - Smaller */}
+          {/* Navigation Arrows */}
           <button
             onClick={() => setCurrentPlanIndex((prev) => (prev > 0 ? prev - 1 : 2))}
-            className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-1.5 shadow-lg z-10 transition-colors"
+            className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-2 shadow-lg z-10 transition-colors"
             aria-label="Previous plan"
           >
-            <ChevronLeft className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+            <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
           <button
             onClick={() => setCurrentPlanIndex((prev) => (prev < 2 ? prev + 1 : 0))}
-            className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-1.5 shadow-lg z-10 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-2 shadow-lg z-10 transition-colors"
             aria-label="Next plan"
           >
-            <ChevronRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+            <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
 
-          {/* Dots Indicator - Smaller */}
-          <div className="flex justify-center space-x-1.5 pt-2 pb-2">
+          {/* Dots Indicator */}
+          <div className="flex justify-center space-x-2 pt-3 pb-3">
             {[0, 1, 2].map((index) => (
               <button
                 key={index}
                 onClick={() => setCurrentPlanIndex(index)}
-                className={`h-1.5 rounded-full transition-all ${
+                className={`h-2 rounded-full transition-all ${
                   currentPlanIndex === index
-                    ? 'w-6 bg-primary-600'
-                    : 'w-1.5 bg-gray-300 dark:bg-gray-600'
+                    ? 'w-8 bg-primary-600'
+                    : 'w-2 bg-gray-300 dark:bg-gray-600'
                 }`}
                 aria-label={`Go to plan ${index + 1}`}
               />
