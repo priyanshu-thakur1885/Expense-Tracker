@@ -51,12 +51,12 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // Auto-slide plans every 5 seconds (paused on hover)
+  // Auto-slide plans every 3 seconds (paused on hover)
   useEffect(() => {
     if (isPaused) return;
     const interval = setInterval(() => {
       setCurrentPlanIndex((prev) => (prev < 2 ? prev + 1 : 0));
-    }, 5000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [isPaused]);
 
@@ -290,12 +290,12 @@ const Dashboard = () => {
         </div>
       </motion.div>
 
-      {/* Subscription Plans Banner */}
+      {/* Subscription Plans Banner - Compact */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
@@ -305,142 +305,128 @@ const Dashboard = () => {
             <motion.div
               className="flex"
               animate={{ x: `-${currentPlanIndex * 100}%` }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
             >
               {[
                 {
                   name: "Basic",
                   price: "Free",
                   period: "",
-                  icon: <Target className="w-6 h-6" />,
+                  icon: <Target className="w-4 h-4" />,
                   gradient: "from-blue-500 to-blue-600",
-                  features: [
-                    "Basic expense tracking",
-                    "Monthly budget limit",
-                    "Simple analytics",
-                    "Basic notifications"
-                  ],
+                  features: ["Basic tracking", "Budget limit", "Simple analytics"],
                   popular: false
                 },
                 {
                   name: "Premium",
                   price: "₹99",
-                  period: "/month",
-                  icon: <Zap className="w-6 h-6" />,
+                  period: "/mo",
+                  icon: <Zap className="w-4 h-4" />,
                   gradient: "from-purple-500 to-purple-600",
-                  features: [
-                    "Unlimited expenses",
-                    "Advanced analytics & charts",
-                    "Bill scanning (OCR)",
-                    "Export to Excel",
-                    "Priority support",
-                    "Smart insights & AI recommendations"
-                  ],
+                  features: ["Unlimited expenses", "Advanced analytics", "Bill scanning", "Excel export"],
                   popular: true
                 },
                 {
                   name: "Pro",
                   price: "₹299",
-                  period: "/month",
-                  icon: <Crown className="w-6 h-6" />,
+                  period: "/mo",
+                  icon: <Crown className="w-4 h-4" />,
                   gradient: "from-yellow-500 to-orange-600",
-                  features: [
-                    "Everything in Premium",
-                    "Custom categories & tags",
-                    "Multiple budgets",
-                    "Advanced reporting",
-                    "API access",
-                    "Early access to new features",
-                    "24/7 priority support",
-                    "Custom integrations"
-                  ],
+                  features: ["All Premium features", "Multiple budgets", "API access", "24/7 support"],
                   popular: false
                 }
               ].map((plan, index) => (
                 <div
                   key={index}
-                  className="w-full flex-shrink-0 px-6 py-6"
+                  className="w-full flex-shrink-0"
                 >
-                  <div className={`relative bg-gradient-to-r ${plan.gradient} rounded-xl p-6 text-white`}>
+                  <div className={`relative bg-gradient-to-r ${plan.gradient} rounded-lg p-4 text-white`}>
                     {plan.popular && (
-                      <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1">
-                        <Sparkles className="w-3 h-3" />
+                      <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-xs font-bold flex items-center space-x-1">
+                        <Sparkles className="w-2.5 h-2.5" />
                         <span>POPULAR</span>
                       </div>
                     )}
                     
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <div className="flex items-center space-x-2 mb-2">
-                          <div className="bg-white/20 rounded-lg p-2">
-                            {plan.icon}
-                          </div>
-                          <h3 className="text-2xl font-bold">{plan.name}</h3>
+                    <div className="flex items-center justify-between">
+                      {/* Left: Plan Info */}
+                      <div className="flex items-center space-x-3 flex-1">
+                        <div className="bg-white/20 rounded-lg p-1.5">
+                          {plan.icon}
                         </div>
-                        <div className="flex items-baseline space-x-1 mt-2">
-                          <span className="text-4xl font-bold">{plan.price}</span>
-                          {plan.period && (
-                            <span className="text-lg opacity-90">{plan.period}</span>
-                          )}
+                        <div>
+                          <div className="flex items-baseline space-x-1">
+                            <span className="text-2xl font-bold">{plan.name}</span>
+                          </div>
+                          <div className="flex items-baseline space-x-1">
+                            <span className="text-xl font-bold">{plan.price}</span>
+                            {plan.period && (
+                              <span className="text-sm opacity-90">{plan.period}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="mt-6 space-y-3 mb-6">
-                      {plan.features.map((feature, featureIndex) => (
-                        <div key={featureIndex} className="flex items-start space-x-2">
-                          <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                          <span className="text-sm opacity-95">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
+                      {/* Center: Features */}
+                      <div className="hidden md:flex items-center space-x-4 flex-1 justify-center">
+                        {plan.features.slice(0, 3).map((feature, featureIndex) => (
+                          <div key={featureIndex} className="flex items-center space-x-1">
+                            <Check className="w-3 h-3 flex-shrink-0" />
+                            <span className="text-xs opacity-95">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
 
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        toast.success(`${plan.name} plan selected! Coming soon...`);
-                      }}
-                      className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                        plan.popular
-                          ? 'bg-white text-purple-600 hover:bg-gray-100'
-                          : 'bg-white/20 hover:bg-white/30 backdrop-blur-sm'
-                      }`}
-                    >
-                      {plan.price === "Free" ? "Current Plan" : `Upgrade to ${plan.name}`}
-                    </motion.button>
+                      {/* Right: Button */}
+                      <div className="flex-shrink-0">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            toast.success(`${plan.name} plan selected! Coming soon...`);
+                          }}
+                          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                            plan.popular
+                              ? 'bg-white text-purple-600 hover:bg-gray-100'
+                              : 'bg-white/20 hover:bg-white/30 backdrop-blur-sm'
+                          }`}
+                        >
+                          {plan.price === "Free" ? "Current" : "Upgrade"}
+                        </motion.button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </motion.div>
           </div>
 
-          {/* Navigation Arrows */}
+          {/* Navigation Arrows - Smaller */}
           <button
             onClick={() => setCurrentPlanIndex((prev) => (prev > 0 ? prev - 1 : 2))}
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-2 shadow-lg z-10 transition-colors"
+            className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-1.5 shadow-lg z-10 transition-colors"
             aria-label="Previous plan"
           >
-            <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+            <ChevronLeft className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </button>
           <button
             onClick={() => setCurrentPlanIndex((prev) => (prev < 2 ? prev + 1 : 0))}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-2 shadow-lg z-10 transition-colors"
+            className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-700/90 hover:bg-white dark:hover:bg-gray-700 rounded-full p-1.5 shadow-lg z-10 transition-colors"
             aria-label="Next plan"
           >
-            <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+            <ChevronRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </button>
 
-          {/* Dots Indicator */}
-          <div className="flex justify-center space-x-2 mt-4 pb-4">
+          {/* Dots Indicator - Smaller */}
+          <div className="flex justify-center space-x-1.5 pt-2 pb-2">
             {[0, 1, 2].map((index) => (
               <button
                 key={index}
                 onClick={() => setCurrentPlanIndex(index)}
-                className={`h-2 rounded-full transition-all ${
+                className={`h-1.5 rounded-full transition-all ${
                   currentPlanIndex === index
-                    ? 'w-8 bg-primary-600'
-                    : 'w-2 bg-gray-300 dark:bg-gray-600'
+                    ? 'w-6 bg-primary-600'
+                    : 'w-1.5 bg-gray-300 dark:bg-gray-600'
                 }`}
                 aria-label={`Go to plan ${index + 1}`}
               />
