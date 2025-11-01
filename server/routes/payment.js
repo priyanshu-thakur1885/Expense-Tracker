@@ -46,7 +46,14 @@ const PLANS = {
 // Create Razorpay order
 router.post('/create-order', authenticateToken, async (req, res) => {
   try {
+    console.log('📦 Creating payment order request:', {
+      plan: req.body.plan,
+      userId: req.user._id,
+      userEmail: req.user.email
+    });
+
     if (!razorpay) {
+      console.error('❌ Razorpay not initialized');
       return res.status(503).json({ 
         success: false,
         message: 'Payment service is not configured. Please contact administrator.' 
@@ -56,15 +63,28 @@ router.post('/create-order', authenticateToken, async (req, res) => {
     const { plan } = req.body;
 
     if (!plan || !PLANS[plan]) {
-      return res.status(400).json({ message: 'Invalid plan selected' });
+      console.error('❌ Invalid plan:', plan);
+      return res.status(400).json({ 
+        success: false,
+        message: `Invalid plan selected: ${plan}. Available plans: ${Object.keys(PLANS).join(', ')}` 
+      });
     }
 
     if (plan === 'basic') {
-      return res.status(400).json({ message: 'Basic plan is free, no payment required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Basic plan is free, no payment required' 
+      });
     }
 
     const planConfig = PLANS[plan];
     const amount = planConfig.price * 100; // Convert to paisa
+
+    console.log('💰 Plan configuration:', {
+      plan: plan,
+      price: planConfig.price,
+      amount: amount
+    });
 
     // Create Razorpay order
     const options = {
@@ -78,9 +98,12 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       }
     };
 
+    console.log('🔄 Calling Razorpay API to create order...');
     const order = await razorpay.orders.create(options);
+    console.log('✅ Razorpay order created:', order.id);
 
     // Save order details temporarily (you might want to use Redis or DB)
+    console.log('💾 Saving order to database...');
     await Subscription.findOneAndUpdate(
       { userId: req.user._id },
       {
@@ -92,6 +115,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       },
       { upsert: true, new: true }
     );
+    console.log('✅ Order saved to database');
 
     res.json({
       success: true,
@@ -103,8 +127,28 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Create order error:', error);
-    res.status(500).json({ message: 'Error creating order', error: error.message });
+    console.error('❌ Create order error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+      error_description: error.error?.description,
+      description: error.description
+    });
+    
+    // Return more detailed error message
+    const errorMessage = error.error?.description || 
+                        error.description || 
+                        error.message || 
+                        'Error creating order';
+    
+    res.status(500).json({ 
+      success: false,
+      message: 'Error creating order', 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

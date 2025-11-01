@@ -170,7 +170,19 @@ const Dashboard = () => {
       
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+      console.error('Payment error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Show detailed error message
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Failed to initiate payment';
+      
+      toast.error(`❌ ${errorMessage}`);
       setProcessingPayment(false);
     }
   };
