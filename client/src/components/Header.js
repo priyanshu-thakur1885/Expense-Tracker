@@ -8,7 +8,7 @@ const Header = ({ searchTerm, setSearchTerm }) => {
   const { user } = useAuth();
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <header className="shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Search bar */}

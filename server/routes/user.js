@@ -22,6 +22,21 @@ const profileUpload = multer({
   }
 });
 
+// Configure multer for wallpaper upload (higher quality, larger size)
+const wallpaperUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for HD wallpapers
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
+
 
 // Get user profile
 router.get('/profile', authenticateToken, async (req, res) => {
@@ -61,6 +76,58 @@ router.put('/profile', authenticateToken, profileUpload.single('photo'), async (
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ message: 'Error updating profile' });
+  }
+});
+
+// Update wallpaper (Pro feature)
+router.put('/wallpaper', authenticateToken, wallpaperUpload.single('wallpaper'), async (req, res) => {
+  try {
+    // Check if user has Pro plan
+    const Subscription = require('../models/Subscription');
+    const subscription = await Subscription.findOne({ userId: req.user._id });
+    
+    if (!subscription || subscription.plan !== 'pro' || subscription.status !== 'active') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Customized wallpaper is only available for Pro plan users' 
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No wallpaper file provided' });
+    }
+
+    // Convert buffer to base64 with high quality
+    const base64 = req.file.buffer.toString('base64');
+    const mimeType = req.file.mimetype;
+    const wallpaperData = `data:${mimeType};base64,${base64}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { wallpaper: wallpaperData },
+      { new: true }
+    ).select('-__v');
+
+    res.json({ success: true, user: { wallpaper: user.wallpaper } });
+  } catch (error) {
+    console.error('Update wallpaper error:', error);
+    res.status(500).json({ message: 'Error updating wallpaper' });
+  }
+});
+
+// Remove wallpaper (Pro feature)
+router.delete('/wallpaper', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { wallpaper: '' },
+      { new: true }
+    ).select('-__v -password');
+
+    res.json({ success: true, message: 'Wallpaper removed successfully' });
+  } catch (error) {
+    console.error('Remove wallpaper error:', error);
+    res.status(500).json({ message: 'Error removing wallpaper' });
   }
 });
 

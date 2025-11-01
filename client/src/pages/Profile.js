@@ -11,7 +11,9 @@ import {
   Bell,
   Moon,
   Sun,
-  DollarSign
+  DollarSign,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -33,6 +35,8 @@ const Profile = () => {
   const [deleteName, setDeleteName] = useState('');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
+  const [uploadingWallpaper, setUploadingWallpaper] = useState(false);
+  const [wallpaperPreview, setWallpaperPreview] = useState(user?.wallpaper || '');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     monthlyLimit: 4000,
@@ -221,6 +225,151 @@ const Profile = () => {
       setUploadingPhoto(false);
     }
   };
+
+  // Process image with HD quality preservation
+  const processHDImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Create canvas to maintain quality
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Calculate dimensions (max 3840x2160 for 4K, but preserve aspect ratio)
+          const maxWidth = 3840;
+          const maxHeight = 2160;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = width * ratio;
+            height = height * ratio;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Use high-quality rendering
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Draw image on canvas
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to base64 with high quality
+          const mimeType = file.type || 'image/jpeg';
+          const quality = mimeType === 'image/png' ? 1.0 : 0.95; // PNG doesn't use quality
+          const base64 = canvas.toDataURL(mimeType, quality);
+          
+          resolve(base64);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleWallpaperChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Check if user has Pro plan
+    const hasAccess = await checkAccessWithRefresh('customWallpaper');
+    if (!hasAccess) {
+      setRequiredPlanForFeature('pro');
+      setShowUpgradeModal(true);
+      event.target.value = '';
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+
+    // Validate file size (10MB limit for HD wallpapers)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be less than 10MB');
+      return;
+    }
+
+    setUploadingWallpaper(true);
+    try {
+      // Process image with HD quality preservation
+      const processedImageDataUrl = await processHDImage(file);
+      
+      // Convert data URL to blob for upload (preserves quality)
+      const response = await fetch(processedImageDataUrl);
+      const blob = await response.blob();
+      
+      const formData = new FormData();
+      formData.append('wallpaper', blob, file.name || 'wallpaper.jpg');
+
+      const uploadResponse = await axios.put('/api/user/wallpaper', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (uploadResponse.data.success) {
+        updateUser({
+          ...user,
+          wallpaper: uploadResponse.data.user.wallpaper
+        });
+        setWallpaperPreview(uploadResponse.data.user.wallpaper);
+        toast.success('Wallpaper updated successfully! 🎨');
+      }
+    } catch (error) {
+      console.error('Error updating wallpaper:', error);
+      if (error.response?.status === 403) {
+        toast.error('Customized wallpaper is only available for Pro plan users');
+        setRequiredPlanForFeature('pro');
+        setShowUpgradeModal(true);
+      } else {
+        toast.error('Failed to update wallpaper');
+      }
+    } finally {
+      setUploadingWallpaper(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleRemoveWallpaper = async () => {
+    const hasAccess = await checkAccessWithRefresh('customWallpaper');
+    if (!hasAccess) {
+      setRequiredPlanForFeature('pro');
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    setUploadingWallpaper(true);
+    try {
+      await axios.delete('/api/user/wallpaper');
+      updateUser({
+        ...user,
+        wallpaper: ''
+      });
+      setWallpaperPreview('');
+      toast.success('Wallpaper removed successfully');
+    } catch (error) {
+      console.error('Error removing wallpaper:', error);
+      toast.error('Failed to remove wallpaper');
+    } finally {
+      setUploadingWallpaper(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.wallpaper) {
+      setWallpaperPreview(user.wallpaper);
+    }
+  }, [user?.wallpaper]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -523,6 +672,71 @@ const Profile = () => {
                 }`}
               />
             </button>
+          </div>
+
+          {/* Customized Wallpaper (Pro Feature) */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <ImageIcon className="w-5 h-5 text-purple-500" />
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white flex items-center space-x-2">
+                    <span>Customized Wallpaper</span>
+                    <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">Pro</span>
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Personalize your dashboard with HD wallpapers
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {wallpaperPreview ? (
+              <div className="relative mt-3 rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600">
+                <img 
+                  src={wallpaperPreview} 
+                  alt="Wallpaper preview" 
+                  className="w-full h-32 object-cover"
+                  style={{ imageRendering: 'high-quality' }}
+                />
+                <button
+                  onClick={handleRemoveWallpaper}
+                  disabled={uploadingWallpaper}
+                  className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors disabled:opacity-50"
+                  title="Remove wallpaper"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="mt-3 flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                <div className="flex flex-col items-center justify-center">
+                  {uploadingWallpaper ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Uploading...</p>
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Click to upload HD wallpaper
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        Max 10MB • Recommended: 1920x1080 or higher
+                      </p>
+                    </>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleWallpaperChange}
+                  className="hidden"
+                  disabled={uploadingWallpaper}
+                />
+              </label>
+            )}
           </div>
         </div>
       </motion.div>
