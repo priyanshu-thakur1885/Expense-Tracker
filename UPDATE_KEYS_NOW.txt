@@ -1,0 +1,73 @@
+═══════════════════════════════════════════════════════════════
+QUICK SETUP: Add Your Razorpay Keys
+═══════════════════════════════════════════════════════════════
+
+📍 YOUR RAZORPAY KEYS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Key ID:     rzp_test_RaazbbSiu68KmJ
+Key Secret: iBcyzQkAj51Snyu8T2LamalG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 STEP 1: LOCAL SETUP (2 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Open: server/.env
+2. Find these lines (or add them):
+   
+   RAZORPAY_KEY_ID=rzp_test_RaazbbSiu68KmJ
+   RAZORPAY_KEY_SECRET=iBcyzQkAj51Snyu8T2LamalG
+
+3. Save the file
+4. Restart your server:
+   cd server
+   npm start
+
+✅ Done locally!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 STEP 2: RENDER SETUP (3 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to: https://dashboard.render.com
+2. Click your Web Service
+3. Click "Environment" tab
+4. Click "Add Environment Variable"
+
+5. Add FIRST variable:
+   Key:   RAZORPAY_KEY_ID
+   Value: rzp_test_RaazbbSiu68KmJ
+   Click "Save Changes"
+
+6. Add SECOND variable:
+   Key:   RAZORPAY_KEY_SECRET
+   Value: iBcyzQkAj51Snyu8T2LamalG
+   ✅ Check "Mark as Sensitive" (important!)
+   Click "Save Changes"
+
+7. Wait 2-3 minutes for auto-deploy
+
+✅ Done on Render!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧪 STEP 3: TEST IT (1 minute)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Open your app → Dashboard
+2. Click "Upgrade to Premium" or "Upgrade to Pro"
+3. Razorpay modal should open
+4. Use test card:
+   Card: 4111 1111 1111 1111
+   CVV:  123
+   Exp:  Any future date
+   OTP:  123456
+
+✅ If modal opens → It's working! 🎉
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ SECURITY NOTES:
+- Never commit .env to Git
+- Never share Key Secret publicly
+- Mark Key Secret as "Sensitive" on Render
+
+═══════════════════════════════════════════════════════════════
+

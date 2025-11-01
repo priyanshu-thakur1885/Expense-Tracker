@@ -7,13 +7,19 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// Initialize Razorpay only if keys are provided
+// Initialize Razorpay - Uses environment variables or fallback to hardcoded keys
+// ⚠️ WARNING: Hardcoded keys are for testing only! Remove before production!
 let razorpay = null;
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_RaazbbSiu68KmJ';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'iBcyzQkAj51Snyu8T2LamalG';
+
+if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
   razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
+    key_id: RAZORPAY_KEY_ID,
+    key_secret: RAZORPAY_KEY_SECRET
   });
+  console.log('✅ Razorpay initialized successfully');
 } else {
   console.warn('⚠️  Razorpay keys not configured. Payment functionality will be disabled.');
 }
@@ -93,7 +99,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
         id: order.id,
         amount: order.amount,
         currency: order.currency,
-        key: process.env.RAZORPAY_KEY_ID
+        key: RAZORPAY_KEY_ID
       }
     });
   } catch (error) {
@@ -105,7 +111,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
 // Verify payment and update subscription
 router.post('/verify-payment', authenticateToken, async (req, res) => {
   try {
-    if (!razorpay || !process.env.RAZORPAY_KEY_SECRET) {
+    if (!razorpay || !RAZORPAY_KEY_SECRET) {
       return res.status(503).json({ 
         success: false,
         message: 'Payment service is not configured. Please contact administrator.' 
@@ -121,7 +127,7 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
     // Verify signature
     const text = `${razorpayOrderId}|${razorpayPaymentId}`;
     const generatedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', RAZORPAY_KEY_SECRET)
       .update(text)
       .digest('hex');
 
