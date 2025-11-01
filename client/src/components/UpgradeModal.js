@@ -16,21 +16,41 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
   useEffect(() => {
     if (!isOpen) return;
 
+    // Check if Razorpay is already available
+    if (window.Razorpay) {
+      setRazorpayLoaded(true);
+      return;
+    }
+
     // Check if script already exists
     const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
     
     if (existingScript) {
-      // Script exists, check if Razorpay is available
-      if (window.Razorpay) {
-        setRazorpayLoaded(true);
-      } else {
-        // Script exists but not loaded yet, wait for it
-        existingScript.onload = () => setRazorpayLoaded(true);
-        if (existingScript.complete) {
+      // Script exists, poll until Razorpay is available
+      const checkInterval = setInterval(() => {
+        if (window.Razorpay) {
           setRazorpayLoaded(true);
+          clearInterval(checkInterval);
         }
+      }, 100);
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!window.Razorpay) {
+          console.warn('Razorpay script loading timeout');
+        }
+      }, 5000);
+
+      // Also listen for onload if script is still loading
+      if (!existingScript.complete) {
+        existingScript.onload = () => {
+          setRazorpayLoaded(true);
+          clearInterval(checkInterval);
+        };
       }
-      return;
+      
+      return () => clearInterval(checkInterval);
     }
 
     // Create and load script
@@ -38,8 +58,20 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     script.onload = () => {
-      setRazorpayLoaded(true);
-      console.log('Razorpay script loaded successfully');
+      // Double-check Razorpay is available
+      if (window.Razorpay) {
+        setRazorpayLoaded(true);
+        console.log('Razorpay script loaded successfully');
+      } else {
+        // Sometimes onload fires before Razorpay is available, poll for it
+        const checkInterval = setInterval(() => {
+          if (window.Razorpay) {
+            setRazorpayLoaded(true);
+            clearInterval(checkInterval);
+          }
+        }, 50);
+        setTimeout(() => clearInterval(checkInterval), 2000);
+      }
     };
     script.onerror = () => {
       console.error('Failed to load Razorpay script');
@@ -90,20 +122,10 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
       return;
     }
 
-    // Check if Razorpay script is loaded
-    if (!window.Razorpay && !razorpayLoaded) {
-      toast.error('Payment system is loading. Please wait a moment and try again.');
+    // Double-check Razorpay is available before proceeding
+    if (!window.Razorpay) {
+      toast.error('Payment system is not ready. Please wait a moment and try again.');
       setProcessingPayment(false);
-      
-      // Retry loading script
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      script.onload = () => {
-        setRazorpayLoaded(true);
-        toast.success('Payment system ready! Please try again.');
-      };
-      document.body.appendChild(script);
       return;
     }
 
@@ -348,17 +370,22 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
 
                   {/* Upgrade Button */}
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={razorpayLoaded && !processingPayment && subscription?.plan !== plan.name.toLowerCase() ? { scale: 1.02 } : {}}
+                    whileTap={razorpayLoaded && !processingPayment && subscription?.plan !== plan.name.toLowerCase() ? { scale: 0.98 } : {}}
                     onClick={() => handlePayment(plan.name)}
-                    disabled={processingPayment || subscription?.plan === plan.name.toLowerCase()}
+                    disabled={processingPayment || subscription?.plan === plan.name.toLowerCase() || !razorpayLoaded}
                     className={`w-full py-3 rounded-lg font-semibold text-base transition-colors ${
                       plan.popular
                         ? 'bg-white text-purple-600 hover:bg-gray-100 shadow-lg'
                         : 'bg-white/20 hover:bg-white/30 backdrop-blur-sm'
-                    } ${processingPayment ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${processingPayment || !razorpayLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {processingPayment ? (
+                    {!razorpayLoaded ? (
+                      <span className="flex items-center justify-center space-x-2">
+                        <LoadingSpinner size="sm" />
+                        <span>Loading payment system...</span>
+                      </span>
+                    ) : processingPayment ? (
                       <span className="flex items-center justify-center space-x-2">
                         <LoadingSpinner size="sm" />
                         <span>Processing...</span>
