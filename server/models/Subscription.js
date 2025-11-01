@@ -7,6 +7,14 @@ const subscriptionSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  userName: {
+    type: String,
+    default: ''
+  },
+  userEmail: {
+    type: String,
+    default: ''
+  },
   plan: {
     type: String,
     enum: ['basic', 'premium', 'pro'],

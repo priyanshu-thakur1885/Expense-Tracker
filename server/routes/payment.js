@@ -114,6 +114,8 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       { userId: req.user._id },
       {
         userId: req.user._id,
+        userName: req.user.name || '',
+        userEmail: req.user.email || '',
         plan: plan,
         razorpayOrderId: order.id,
         amount: planConfig.price,
@@ -196,6 +198,9 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
     const subscription = await Subscription.findOneAndUpdate(
       { userId: req.user._id },
       {
+        userId: req.user._id,
+        userName: req.user.name || '',
+        userEmail: req.user.email || '',
         plan: plan,
         status: 'active',
         razorpayOrderId: razorpayOrderId,
@@ -232,6 +237,8 @@ router.get('/subscription', authenticateToken, async (req, res) => {
       // Create basic plan subscription
       subscription = new Subscription({
         userId: req.user._id,
+        userName: req.user.name || '',
+        userEmail: req.user.email || '',
         plan: 'basic',
         status: 'active'
       });
