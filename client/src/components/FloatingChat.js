@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Lock, Unlock, User, Shield } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import UpgradeModal from './UpgradeModal';
+import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
 
 // Helper function to get current user ID from token
 const getCurrentUserId = () => {
@@ -20,11 +22,13 @@ const getCurrentUserId = () => {
 const FloatingChat = () => {
   const { socket, isConnected, messages, sendMessage, sendTyping } = useSocket();
   const { user } = useAuth();
+  const { subscription } = useFeatureAccess();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(true);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const messagesEndRef = React.useRef(null);
   const typingTimeoutRef = React.useRef(null);
 
@@ -71,6 +75,13 @@ const FloatingChat = () => {
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
+    // Check if user has access to AI Assistant (Pro feature)
+    const currentPlan = subscription?.plan || 'basic';
+    if (!hasFeatureAccess(currentPlan, 'aiAssistant')) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const success = sendMessage('admin', message.trim(), false);
     if (success) {
       setMessage('');
@@ -89,6 +100,13 @@ const FloatingChat = () => {
 
   // Mark messages as read when chat opens
   const handleOpenChat = () => {
+    // Check if user has access to AI Assistant (Pro feature)
+    const currentPlan = subscription?.plan || 'basic';
+    if (!hasFeatureAccess(currentPlan, 'aiAssistant')) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setIsOpen(true);
     const currentTime = Date.now();
     localStorage.setItem('lastMessageRead', currentTime.toString());
@@ -310,6 +328,13 @@ const FloatingChat = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        requiredPlan="pro"
+      />
     </>
   );
 };

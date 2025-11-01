@@ -19,15 +19,20 @@ import notificationService from '../services/notificationService';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import UpgradeModal from '../components/UpgradeModal';
+import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { subscription } = useFeatureAccess();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [budget, setBudget] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteName, setDeleteName] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     monthlyLimit: 4000,
@@ -129,6 +134,14 @@ const Profile = () => {
   const API_BASE = process.env.REACT_APP_API_URL || '';
 
   const handleExport = async () => {
+    // Check if user has access to export (Premium feature)
+    const currentPlan = subscription?.plan || 'basic';
+    if (!hasFeatureAccess(currentPlan, 'exportExcel')) {
+      setRequiredPlanForFeature('premium');
+      setShowUpgradeModal(true);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE}/api/user/export`, {
@@ -584,6 +597,13 @@ const Profile = () => {
           )}
         </div>
       </motion.div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        requiredPlan={requiredPlanForFeature}
+      />
     </div>
   );
 };

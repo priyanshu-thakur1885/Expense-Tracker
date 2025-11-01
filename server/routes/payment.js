@@ -34,12 +34,12 @@ const PLANS = {
   premium: {
     name: 'Premium',
     price: 99, // in rupees (paisa: 9900)
-    duration: '1 month'
+    duration: '1 year'
   },
   pro: {
     name: 'Pro',
     price: 299, // in rupees (paisa: 29900)
-    duration: '1 month'
+    duration: '1 year'
   }
 };
 
@@ -203,7 +203,7 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
         razorpaySignature: razorpaySignature,
         amount: PLANS[plan].price,
         startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 365 days (1 year) from now
       },
       { upsert: true, new: true }
     );

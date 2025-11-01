@@ -26,7 +26,9 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import FloatingChat from '../components/FloatingChat';
+import UpgradeModal from '../components/UpgradeModal';
 import { createPaymentOrder, verifyPayment, getSubscription } from '../services/paymentService';
+import { hasFeatureAccess } from '../utils/featureGating';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -40,6 +42,8 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
 
   // Log component mount
   useEffect(() => {
@@ -235,6 +239,16 @@ const Dashboard = () => {
     }
   };
   const handleBillScan = async (event) => {
+    // Check if user has access to OCR Scanner (Pro feature)
+    const currentPlan = subscription?.plan || 'basic';
+    if (!hasFeatureAccess(currentPlan, 'ocrScanner')) {
+      setRequiredPlanForFeature('pro');
+      setShowUpgradeModal(true);
+      // Clear the file input
+      event.target.value = '';
+      return;
+    }
+
     const file = event.target.files[0];
     if (!file) return;
     setScanning(true);
@@ -461,32 +475,32 @@ const Dashboard = () => {
                 {
                   name: "Premium",
                   price: "₹99",
-                  period: "/month",
+                  period: "/year",
                   icon: <Zap className="w-5 h-5" />,
                   gradient: "from-purple-500 to-purple-600",
                   features: [
                     "Unlimited expenses",
+                    "Voice input access",
                     "Advanced analytics & charts",
-                    "Bill scanning (OCR)",
-                    "Export to Excel",
-                    "Priority support",
-                    "Smart insights & AI recommendations"
+                    "Export data to Excel",
+                    "Smart AI insights",
+                    "Priority support"
                   ],
                   popular: true
                 },
                 {
                   name: "Pro",
                   price: "₹299",
-                  period: "/month",
+                  period: "/year",
                   icon: <Crown className="w-5 h-5" />,
                   gradient: "from-yellow-500 to-orange-600",
                   features: [
                     "Everything in Premium",
-                    "Custom categories & tags",
-                    "Multiple budgets",
-                    "Advanced reporting",
-                    "API access",
-                    "24/7 priority support"
+                    "OCR Bill Scanner",
+                    "AI Assistant",
+                    "Customized wallpaper",
+                    "Priority admin help",
+                    "24/7 support"
                   ],
                   popular: false
                 }
@@ -783,6 +797,13 @@ const Dashboard = () => {
         {/* Floating Chat Component */}
         <FloatingChat />
       </motion.div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        requiredPlan={requiredPlanForFeature}
+      />
     </div>
   );
 };

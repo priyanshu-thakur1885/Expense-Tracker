@@ -8,14 +8,19 @@ import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Save, ArrowLeft, Mic, Camera } from 'lucide-react';
 import Tesseract from 'tesseract.js';
+import UpgradeModal from '../components/UpgradeModal';
+import { useFeatureAccess, hasFeatureAccess, getRequiredPlan } from '../utils/featureGating';
 
 
 const AddExpense = () => {
   const navigate = useNavigate();
   const { generateExpenseNotification } = useNotifications();
+  const { subscription, checkAccess } = useFeatureAccess();
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [message, setMessage] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
   const [formData, setFormData] = useState({
     item: '',
     amount: '',
@@ -45,6 +50,14 @@ const AddExpense = () => {
   // 🎤 Voice Input Functionality with Instruction Popup
   // 🎤 Voice Input Functionality (without auto submit)
 const handleVoiceInput = () => {
+  // Check if user has access to voice input (Premium feature)
+  const currentPlan = subscription?.plan || 'basic';
+  if (!hasFeatureAccess(currentPlan, 'voiceInput')) {
+    setRequiredPlanForFeature('premium');
+    setShowUpgradeModal(true);
+    return;
+  }
+
   if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
     alert('Speech recognition is not supported in this browser. Please use Google Chrome.');
     return;
@@ -113,6 +126,14 @@ const handleVoiceInput = () => {
 
 // 📷 Enhanced Bill Scan with Camera & Gallery Options
 const handleScanBill = async () => {
+  // Check if user has access to OCR Scanner (Pro feature)
+  const currentPlan = subscription?.plan || 'basic';
+  if (!hasFeatureAccess(currentPlan, 'ocrScanner')) {
+    setRequiredPlanForFeature('pro');
+    setShowUpgradeModal(true);
+    return;
+  }
+
   const choice = window.confirm("Do you want to open the camera?\n\nPress OK for Camera\nPress Cancel for Gallery");
 
   if (choice) {
@@ -455,6 +476,13 @@ const processImageForOCR = async (imageFile) => {
           </div>
         </form>
       </motion.div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        requiredPlan={requiredPlanForFeature}
+      />
     </div>
   );
 };

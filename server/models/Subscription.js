@@ -50,10 +50,10 @@ const subscriptionSchema = new mongoose.Schema({
 subscriptionSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   
-  // Set end date based on plan (1 month from start)
+  // Set end date based on plan (1 year from start)
   if (this.plan !== 'basic' && this.status === 'active' && !this.endDate) {
     const endDate = new Date(this.startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
+    endDate.setFullYear(endDate.getFullYear() + 1);
     this.endDate = endDate;
   }
   

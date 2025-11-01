@@ -27,18 +27,31 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import FloatingChat from '../components/FloatingChat';
+import UpgradeModal from '../components/UpgradeModal';
+import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
 import { format } from 'date-fns';
 
 const Analytics = () => {
+  const { subscription } = useFeatureAccess();
   const [stats, setStats] = useState(null);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('today');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [period, selectedDate]);
+    // Check access when component loads or subscription changes
+    const currentPlan = subscription?.plan || 'basic';
+    if (!hasFeatureAccess(currentPlan, 'advancedAnalytics')) {
+      setRequiredPlanForFeature('premium');
+      setShowUpgradeModal(true);
+    } else {
+      setShowUpgradeModal(false);
+      fetchAnalytics();
+    }
+  }, [period, selectedDate, subscription]);
 
   const fetchAnalytics = async () => {
     try {
@@ -464,6 +477,13 @@ const Analytics = () => {
         {/* Floating Chat Component */}
         <FloatingChat />
       </motion.div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        requiredPlan={requiredPlanForFeature}
+      />
     </div>
   );
 };
