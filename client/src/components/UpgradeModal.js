@@ -10,7 +10,48 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
   const { user } = useAuth();
   const [subscription, setSubscription] = useState(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
+  // Load Razorpay script when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    
+    if (existingScript) {
+      // Script exists, check if Razorpay is available
+      if (window.Razorpay) {
+        setRazorpayLoaded(true);
+      } else {
+        // Script exists but not loaded yet, wait for it
+        existingScript.onload = () => setRazorpayLoaded(true);
+        if (existingScript.complete) {
+          setRazorpayLoaded(true);
+        }
+      }
+      return;
+    }
+
+    // Create and load script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => {
+      setRazorpayLoaded(true);
+      console.log('Razorpay script loaded successfully');
+    };
+    script.onerror = () => {
+      console.error('Failed to load Razorpay script');
+      setRazorpayLoaded(false);
+    };
+    document.body.appendChild(script);
+
+    // Cleanup function (but don't remove script as it might be used elsewhere)
+    return () => {
+      // Don't remove script - it's shared across components
+    };
+  }, [isOpen]);
 
   const fetchSubscription = async () => {
     try {
@@ -22,6 +63,13 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
       console.error('Error fetching subscription:', error);
     }
   };
+
+  // Fetch subscription when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchSubscription();
+    }
+  }, [isOpen]);
 
   const handlePayment = async (planName) => {
     const planMap = {
@@ -43,9 +91,19 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
     }
 
     // Check if Razorpay script is loaded
-    if (!window.Razorpay) {
+    if (!window.Razorpay && !razorpayLoaded) {
       toast.error('Payment system is loading. Please wait a moment and try again.');
       setProcessingPayment(false);
+      
+      // Retry loading script
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => {
+        setRazorpayLoaded(true);
+        toast.success('Payment system ready! Please try again.');
+      };
+      document.body.appendChild(script);
       return;
     }
 
