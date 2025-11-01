@@ -7,11 +7,16 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+// Initialize Razorpay only if keys are provided
+let razorpay = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+  });
+} else {
+  console.warn('⚠️  Razorpay keys not configured. Payment functionality will be disabled.');
+}
 
 // Plan configurations
 const PLANS = {
@@ -35,6 +40,13 @@ const PLANS = {
 // Create Razorpay order
 router.post('/create-order', authenticateToken, async (req, res) => {
   try {
+    if (!razorpay) {
+      return res.status(503).json({ 
+        success: false,
+        message: 'Payment service is not configured. Please contact administrator.' 
+      });
+    }
+
     const { plan } = req.body;
 
     if (!plan || !PLANS[plan]) {
@@ -93,6 +105,13 @@ router.post('/create-order', authenticateToken, async (req, res) => {
 // Verify payment and update subscription
 router.post('/verify-payment', authenticateToken, async (req, res) => {
   try {
+    if (!razorpay || !process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(503).json({ 
+        success: false,
+        message: 'Payment service is not configured. Please contact administrator.' 
+      });
+    }
+
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, plan } = req.body;
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !plan) {
