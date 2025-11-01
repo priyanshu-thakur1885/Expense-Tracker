@@ -55,25 +55,35 @@ export const useFeatureAccess = () => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchSub = async () => {
-      try {
-        const response = await getSubscription();
-        if (response.success) {
-          setSubscription(response.subscription);
-        }
-      } catch (error) {
-        console.error('Error fetching subscription:', error);
-      } finally {
-        setLoading(false);
+  const fetchSubscription = async () => {
+    try {
+      const response = await getSubscription();
+      if (response.success) {
+        setSubscription(response.subscription);
+        return response.subscription;
       }
-    };
-    fetchSub();
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    fetchSubscription().finally(() => {
+      setLoading(false);
+    });
   }, []);
 
   const checkAccess = (feature) => {
     if (!subscription) return false;
     return hasFeatureAccess(subscription.plan, feature);
+  };
+
+  const checkAccessWithRefresh = async (feature) => {
+    // Refresh subscription before checking to ensure we have latest data
+    const currentSub = await fetchSubscription();
+    if (!currentSub) return false;
+    return hasFeatureAccess(currentSub.plan, feature);
   };
 
   const getRequiredPlanForFeature = (feature) => {
@@ -84,6 +94,8 @@ export const useFeatureAccess = () => {
     subscription,
     loading,
     checkAccess,
+    checkAccessWithRefresh,
+    refreshSubscription: fetchSubscription,
     getRequiredPlanForFeature,
     currentPlan: subscription?.plan || 'basic'
   };

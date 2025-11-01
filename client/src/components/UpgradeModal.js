@@ -145,11 +145,11 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium' }) => {
     }
   ];
 
-  // Show both Premium and Pro plans for Pro features (so users can see both options)
-  // For Premium features, only show Premium plan
+  // For Premium features: Show both Premium and Pro (since Pro includes Premium features)
+  // For Pro-only features: Show only Pro plan
   const filteredPlans = requiredPlan === 'pro' 
-    ? plans  // Show both Premium and Pro for Pro features
-    : plans.filter(plan => plan.name === 'Premium');  // Only Premium for Premium features
+    ? plans.filter(plan => plan.name === 'Pro')  // Only Pro for Pro-only features
+    : plans;  // Both Premium and Pro for Premium features
 
   if (!isOpen) return null;
 

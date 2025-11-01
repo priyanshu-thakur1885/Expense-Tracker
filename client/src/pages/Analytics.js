@@ -32,7 +32,7 @@ import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
 import { format } from 'date-fns';
 
 const Analytics = () => {
-  const { subscription } = useFeatureAccess();
+  const { subscription, checkAccessWithRefresh } = useFeatureAccess();
   const [stats, setStats] = useState(null);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,14 +43,17 @@ const Analytics = () => {
 
   useEffect(() => {
     // Check access when component loads or subscription changes
-    const currentPlan = subscription?.plan || 'basic';
-    if (!hasFeatureAccess(currentPlan, 'advancedAnalytics')) {
-      setRequiredPlanForFeature('premium');
-      setShowUpgradeModal(true);
-    } else {
-      setShowUpgradeModal(false);
-      fetchAnalytics();
-    }
+    const checkAccess = async () => {
+      const hasAccess = await checkAccessWithRefresh('advancedAnalytics');
+      if (!hasAccess) {
+        setRequiredPlanForFeature('premium');
+        setShowUpgradeModal(true);
+      } else {
+        setShowUpgradeModal(false);
+        fetchAnalytics();
+      }
+    };
+    checkAccess();
   }, [period, selectedDate, subscription]);
 
   const fetchAnalytics = async () => {

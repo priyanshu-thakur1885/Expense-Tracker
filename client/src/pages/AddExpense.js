@@ -15,7 +15,7 @@ import { useFeatureAccess, hasFeatureAccess, getRequiredPlan } from '../utils/fe
 const AddExpense = () => {
   const navigate = useNavigate();
   const { generateExpenseNotification } = useNotifications();
-  const { subscription, checkAccess } = useFeatureAccess();
+  const { subscription, checkAccessWithRefresh } = useFeatureAccess();
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [message, setMessage] = useState('');
@@ -49,10 +49,10 @@ const AddExpense = () => {
 
   // 🎤 Voice Input Functionality with Instruction Popup
   // 🎤 Voice Input Functionality (without auto submit)
-const handleVoiceInput = () => {
-  // Check if user has access to voice input (Premium feature)
-  const currentPlan = subscription?.plan || 'basic';
-  if (!hasFeatureAccess(currentPlan, 'voiceInput')) {
+const handleVoiceInput = async () => {
+  // Check if user has access to voice input (Premium feature) - refresh subscription first
+  const hasAccess = await checkAccessWithRefresh('voiceInput');
+  if (!hasAccess) {
     setRequiredPlanForFeature('premium');
     setShowUpgradeModal(true);
     return;
@@ -126,9 +126,9 @@ const handleVoiceInput = () => {
 
 // 📷 Enhanced Bill Scan with Camera & Gallery Options
 const handleScanBill = async () => {
-  // Check if user has access to OCR Scanner (Pro feature)
-  const currentPlan = subscription?.plan || 'basic';
-  if (!hasFeatureAccess(currentPlan, 'ocrScanner')) {
+  // Check if user has access to OCR Scanner (Pro feature) - refresh subscription first
+  const hasAccess = await checkAccessWithRefresh('ocrScanner');
+  if (!hasAccess) {
     setRequiredPlanForFeature('pro');
     setShowUpgradeModal(true);
     return;

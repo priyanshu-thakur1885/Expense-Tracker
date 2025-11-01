@@ -22,7 +22,7 @@ const getCurrentUserId = () => {
 const FloatingChat = () => {
   const { socket, isConnected, messages, sendMessage, sendTyping } = useSocket();
   const { user } = useAuth();
-  const { subscription } = useFeatureAccess();
+  const { checkAccessWithRefresh } = useFeatureAccess();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -72,12 +72,12 @@ const FloatingChat = () => {
   };
 
   // Send message to admin
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
 
-    // Check if user has access to AI Assistant (Pro feature)
-    const currentPlan = subscription?.plan || 'basic';
-    if (!hasFeatureAccess(currentPlan, 'aiAssistant')) {
+    // Check if user has access to AI Assistant (Pro feature) - refresh subscription first
+    const hasAccess = await checkAccessWithRefresh('aiAssistant');
+    if (!hasAccess) {
       setShowUpgradeModal(true);
       return;
     }
@@ -99,10 +99,10 @@ const FloatingChat = () => {
   };
 
   // Mark messages as read when chat opens
-  const handleOpenChat = () => {
-    // Check if user has access to AI Assistant (Pro feature)
-    const currentPlan = subscription?.plan || 'basic';
-    if (!hasFeatureAccess(currentPlan, 'aiAssistant')) {
+  const handleOpenChat = async () => {
+    // Check if user has access to AI Assistant (Pro feature) - refresh subscription first
+    const hasAccess = await checkAccessWithRefresh('aiAssistant');
+    if (!hasAccess) {
       setShowUpgradeModal(true);
       return;
     }

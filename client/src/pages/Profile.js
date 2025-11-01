@@ -25,7 +25,7 @@ import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { subscription } = useFeatureAccess();
+  const { subscription, checkAccessWithRefresh } = useFeatureAccess();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [budget, setBudget] = useState(null);
@@ -134,9 +134,9 @@ const Profile = () => {
   const API_BASE = process.env.REACT_APP_API_URL || '';
 
   const handleExport = async () => {
-    // Check if user has access to export (Premium feature)
-    const currentPlan = subscription?.plan || 'basic';
-    if (!hasFeatureAccess(currentPlan, 'exportExcel')) {
+    // Check if user has access to export (Premium feature) - refresh subscription first
+    const hasAccess = await checkAccessWithRefresh('exportExcel');
+    if (!hasAccess) {
       setRequiredPlanForFeature('premium');
       setShowUpgradeModal(true);
       return;

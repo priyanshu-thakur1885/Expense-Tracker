@@ -28,12 +28,13 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import FloatingChat from '../components/FloatingChat';
 import UpgradeModal from '../components/UpgradeModal';
 import { createPaymentOrder, verifyPayment, getSubscription } from '../services/paymentService';
-import { hasFeatureAccess } from '../utils/featureGating';
+import { useFeatureAccess } from '../utils/featureGating';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const notifications = useNotifications();
+  const { subscription: featureSubscription, checkAccessWithRefresh } = useFeatureAccess();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -239,9 +240,9 @@ const Dashboard = () => {
     }
   };
   const handleBillScan = async (event) => {
-    // Check if user has access to OCR Scanner (Pro feature)
-    const currentPlan = subscription?.plan || 'basic';
-    if (!hasFeatureAccess(currentPlan, 'ocrScanner')) {
+    // Check if user has access to OCR Scanner (Pro feature) - refresh subscription first
+    const hasAccess = await checkAccessWithRefresh('ocrScanner');
+    if (!hasAccess) {
       setRequiredPlanForFeature('pro');
       setShowUpgradeModal(true);
       // Clear the file input
