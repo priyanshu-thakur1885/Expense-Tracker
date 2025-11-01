@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import LoadingSpinner from './LoadingSpinner';
 
-const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium' }) => {
+const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSuccess }) => {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState(null);
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -42,13 +42,20 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium' }) => {
       return;
     }
 
+    // Check if Razorpay script is loaded
+    if (!window.Razorpay) {
+      toast.error('Payment system is loading. Please wait a moment and try again.');
+      setProcessingPayment(false);
+      return;
+    }
+
     setProcessingPayment(true);
     
     try {
       const orderResponse = await createPaymentOrder(planKey);
       
       if (!orderResponse.success || !orderResponse.order) {
-        throw new Error('Failed to create payment order');
+        throw new Error(orderResponse.message || 'Failed to create payment order');
       }
 
       const { order } = orderResponse;
@@ -69,6 +76,7 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium' }) => {
         },
         handler: async (response) => {
           try {
+            console.log('Payment successful, verifying...', response);
             const verifyResponse = await verifyPayment({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
@@ -76,17 +84,60 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium' }) => {
               plan: planKey
             });
 
+            console.log('Verification response:', verifyResponse);
+
             if (verifyResponse.success) {
               toast.success(`🎉 ${planName} plan activated successfully!`);
+              
+              // Refresh subscription immediately
               await fetchSubscription();
-              setProcessingPayment(false);
-              onClose(); // Close modal after successful payment
+              
+              // Trigger global refresh - notify parent components to refresh subscription
+              if (onPaymentSuccess) {
+                await onPaymentSuccess();
+              }
+              
+              // Dispatch custom event for other components listening
+              window.dispatchEvent(new CustomEvent('subscription-updated'));
+              
+              // Small delay to ensure all updates complete
+              setTimeout(() => {
+                setProcessingPayment(false);
+                onClose(); // Close modal after successful payment
+              }, 500);
             } else {
-              throw new Error('Payment verification failed');
+              // Even if verification response says failed, check subscription in case it was updated
+              console.warn('Verification response indicates failure, but checking subscription...');
+              await fetchSubscription();
+              window.dispatchEvent(new CustomEvent('subscription-updated'));
+              
+              throw new Error(verifyResponse.message || 'Payment verification failed');
             }
           } catch (error) {
             console.error('Payment verification error:', error);
-            toast.error('Payment verification failed. Please contact support.');
+            
+            // Even on error, check if subscription was updated (payment might have succeeded)
+            try {
+              await fetchSubscription();
+              const updatedSub = await getSubscription();
+              if (updatedSub?.success && updatedSub?.subscription?.plan === planKey) {
+                // Subscription was actually updated! Payment succeeded
+                toast.success(`🎉 ${planName} plan activated successfully!`);
+                window.dispatchEvent(new CustomEvent('subscription-updated'));
+                if (onPaymentSuccess) {
+                  await onPaymentSuccess();
+                }
+                setTimeout(() => {
+                  setProcessingPayment(false);
+                  onClose();
+                }, 500);
+                return;
+              }
+            } catch (checkError) {
+              console.error('Error checking subscription after payment error:', checkError);
+            }
+            
+            toast.error(error.response?.data?.message || error.message || 'Payment verification failed. Please refresh and check your subscription.');
             setProcessingPayment(false);
           }
         },
@@ -103,8 +154,15 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium' }) => {
       
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to initiate payment';
+      toast.error(errorMessage);
       setProcessingPayment(false);
+      
+      // Even if order creation fails, check if subscription was updated (in case of retry)
+      setTimeout(async () => {
+        await fetchSubscription();
+        window.dispatchEvent(new CustomEvent('subscription-updated'));
+      }, 1000);
     }
   };
 

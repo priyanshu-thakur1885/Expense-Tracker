@@ -72,6 +72,16 @@ export const useFeatureAccess = () => {
     fetchSubscription().finally(() => {
       setLoading(false);
     });
+
+    // Listen for subscription updates from payment success
+    const handleSubscriptionUpdate = async () => {
+      await fetchSubscription();
+    };
+    
+    window.addEventListener('subscription-updated', handleSubscriptionUpdate);
+    return () => {
+      window.removeEventListener('subscription-updated', handleSubscriptionUpdate);
+    };
   }, []);
 
   const checkAccess = (feature) => {

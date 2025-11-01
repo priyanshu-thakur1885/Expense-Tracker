@@ -27,7 +27,7 @@ import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { subscription, checkAccessWithRefresh } = useFeatureAccess();
+  const { subscription, checkAccessWithRefresh, refreshSubscription } = useFeatureAccess();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [budget, setBudget] = useState(null);
@@ -370,6 +370,18 @@ const Profile = () => {
       setWallpaperPreview(user.wallpaper);
     }
   }, [user?.wallpaper]);
+
+  // Listen for subscription updates from UpgradeModal
+  useEffect(() => {
+    const handleSubscriptionUpdate = async () => {
+      await refreshSubscription();
+    };
+    
+    window.addEventListener('subscription-updated', handleSubscriptionUpdate);
+    return () => {
+      window.removeEventListener('subscription-updated', handleSubscriptionUpdate);
+    };
+  }, [refreshSubscription]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -817,6 +829,14 @@ const Profile = () => {
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         requiredPlan={requiredPlanForFeature}
+        onPaymentSuccess={async () => {
+          // Refresh subscription in feature gating hook
+          await refreshSubscription();
+          // Small delay to ensure backend has processed
+          setTimeout(() => {
+            toast.success('Your subscription has been updated! You can now use Pro features.');
+          }, 500);
+        }}
       />
     </div>
   );
