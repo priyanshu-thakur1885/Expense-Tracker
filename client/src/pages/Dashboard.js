@@ -64,10 +64,24 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const response = await axios.get('/api/user/dashboard');
-      setDashboardData(response.data.dashboard);
+      console.log('Dashboard API response:', response.data);
+      if (response.data && response.data.dashboard) {
+        setDashboardData(response.data.dashboard);
+      } else {
+        console.error('Invalid dashboard data structure:', response.data);
+        toast.error('Invalid dashboard data received');
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      if (error.response) {
+        console.error('API Error:', error.response.status, error.response.data);
+        toast.error(`Failed to load dashboard: ${error.response.status}`);
+      } else if (error.request) {
+        console.error('Network Error:', error.request);
+        toast.error('Network error: Could not reach server');
+      } else {
+        toast.error('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
@@ -121,7 +135,19 @@ const Dashboard = () => {
     );
   }
 
-  const { budget, today, week, recentExpenses } = dashboardData;
+  const { 
+    budget = { 
+      monthlyLimit: 0, 
+      currentSpent: 0, 
+      remaining: 0, 
+      percentage: 0, 
+      status: 'safe',
+      dailyTarget: 0
+    }, 
+    today = { spent: 0, expenses: 0 }, 
+    week = { spent: 0, expenses: 0 }, 
+    recentExpenses = [] 
+  } = dashboardData || {};
 
   const getBudgetStatusColor = (status) => {
     switch (status) {
