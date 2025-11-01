@@ -128,44 +128,67 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
   try {
     // Handle demo mode
     if (req.user._id === '507f1f77bcf86cd799439011') {
+      const now = new Date();
+      const dailySpending = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        dailySpending.push({
+          date: date.toISOString().split('T')[0],
+          day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          amount: [0, 120, 145, 0, 95, 180, 25][6 - i],
+          count: [0, 1, 2, 0, 1, 1, 1][6 - i]
+        });
+      }
+
       const demoData = {
-        user: req.user,
-        recentExpenses: [
-          {
-            _id: 'demo-expense-1',
-            item: 'Chicken Biryani',
-            amount: 120,
-            category: 'lunch',
-            foodCourt: 'Food Court 1',
-            date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+        dashboard: {
+          user: req.user,
+          budget: {
+            monthlyLimit: 4000,
+            currentSpent: 325,
+            remaining: 3675,
+            percentage: 8.125,
+            status: 'safe',
+            dailyTarget: 118.55
           },
-          {
-            _id: 'demo-expense-2',
-            item: 'Coffee',
-            amount: 25,
-            category: 'beverage',
-            foodCourt: 'Café',
-            date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+          today: {
+            spent: 25,
+            expenses: 1
           },
-          {
-            _id: 'demo-expense-3',
-            item: 'Pizza',
-            amount: 180,
-            category: 'dinner',
-            foodCourt: 'Food Court 2',
-            date: new Date()
-          }
-        ],
-        budget: {
-          monthlyLimit: 4000,
-          currentSpent: 325,
-          remaining: 3675
-        },
-        stats: {
-          totalExpenses: 325,
-          averageDaily: 108.33,
-          topCategory: 'lunch',
-          topFoodCourt: 'Food Court 1'
+          week: {
+            spent: 565,
+            expenses: 6
+          },
+          categoryStats: [
+            { category: 'lunch', amount: 120 },
+            { category: 'dinner', amount: 180 },
+            { category: 'beverages', amount: 25 }
+          ],
+          foodCourtStats: [
+            { foodCourt: 'Food Court 1', amount: 120 },
+            { foodCourt: 'Food Court 2', amount: 180 }
+          ],
+          dailySpending: dailySpending,
+          comparison: {
+            currentMonth: 325,
+            previousMonth: 280,
+            change: 16.07
+          },
+          averageDailySpending: 10.83,
+          insights: [
+            {
+              type: 'success',
+              message: 'Great job!',
+              action: 'You\'re on track with your budget. Keep up the good spending habits!'
+            },
+            {
+              type: 'tip',
+              message: 'Top spending category: lunch',
+              action: 'You\'ve spent ₹120.00 on lunch this month.'
+            }
+          ],
+          totalExpenses: 3
         }
       };
       return res.json({ success: true, ...demoData });
@@ -220,6 +243,120 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
 
     const weekSpent = weekExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
+    // Get all current month expenses for stats
+    const monthExpenses = await Expense.find({
+      userId: req.user._id,
+      date: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+
+    // Calculate category breakdown
+    const categoryStats = {};
+    monthExpenses.forEach(expense => {
+      categoryStats[expense.category] = (categoryStats[expense.category] || 0) + expense.amount;
+    });
+
+    // Get top categories
+    const topCategories = Object.entries(categoryStats)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([category, amount]) => ({ category, amount }));
+
+    // Calculate food court breakdown
+    const foodCourtStats = {};
+    monthExpenses.forEach(expense => {
+      foodCourtStats[expense.foodCourt] = (foodCourtStats[expense.foodCourt] || 0) + expense.amount;
+    });
+
+    // Get top food courts
+    const topFoodCourts = Object.entries(foodCourtStats)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([foodCourt, amount]) => ({ foodCourt, amount }));
+
+    // Calculate daily spending for last 7 days
+    const dailySpending = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(currentDate);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      const dayExpenses = weekExpenses.filter(exp => {
+        const expDate = new Date(exp.date);
+        return expDate >= date && expDate < nextDate;
+      });
+      
+      const daySpent = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      dailySpending.push({
+        date: date.toISOString().split('T')[0],
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        amount: daySpent,
+        count: dayExpenses.length
+      });
+    }
+
+    // Calculate previous month comparison
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const prevMonthExpenses = await Expense.find({
+      userId: req.user._id,
+      date: { $gte: prevMonthStart, $lte: prevMonthEnd }
+    });
+    const prevMonthSpent = prevMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+    // Calculate average daily spending
+    const daysPassed = now.getDate();
+    const avgDailySpending = daysPassed > 0 ? budget.currentSpent / daysPassed : 0;
+
+    // Get insights
+    const insights = [];
+    if (budget.status === 'danger' || budget.status === 'exceeded') {
+      insights.push({
+        type: 'warning',
+        message: 'You\'re spending too fast!',
+        action: `You've used ${budget.spendingPercentage.toFixed(1)}% of your budget. Try to stick to your daily target of ₹${budget.dailyTarget.toFixed(2)}.`
+      });
+    } else if (budget.status === 'warning') {
+      insights.push({
+        type: 'info',
+        message: 'Mindful spending',
+        action: `You're doing well, but watch your spending. Aim for ₹${budget.dailyTarget.toFixed(2)} per day.`
+      });
+    } else {
+      insights.push({
+        type: 'success',
+        message: 'Great job!',
+        action: `You're on track with your budget. Keep up the good spending habits!`
+      });
+    }
+
+    if (topCategories.length > 0) {
+      const topCategory = topCategories[0];
+      insights.push({
+        type: 'tip',
+        message: `Top spending category: ${topCategory.category}`,
+        action: `You've spent ₹${topCategory.amount.toFixed(2)} on ${topCategory.category} this month.`
+      });
+    }
+
+    if (prevMonthSpent > 0) {
+      const change = ((budget.currentSpent - prevMonthSpent) / prevMonthSpent) * 100;
+      if (change > 10) {
+        insights.push({
+          type: 'warning',
+          message: 'Spending increased',
+          action: `You're spending ${change.toFixed(1)}% more than last month. Consider reviewing your expenses.`
+        });
+      } else if (change < -10) {
+        insights.push({
+          type: 'success',
+          message: 'Spending decreased',
+          action: `Great! You're spending ${Math.abs(change).toFixed(1)}% less than last month.`
+        });
+      }
+    }
+
     res.json({
       success: true,
       dashboard: {
@@ -243,7 +380,17 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
           spent: weekSpent,
           expenses: weekExpenses.length
         },
-        recentExpenses: expenses
+        categoryStats: topCategories,
+        foodCourtStats: topFoodCourts,
+        dailySpending: dailySpending,
+        comparison: {
+          currentMonth: budget.currentSpent,
+          previousMonth: prevMonthSpent,
+          change: prevMonthSpent > 0 ? ((budget.currentSpent - prevMonthSpent) / prevMonthSpent) * 100 : 0
+        },
+        averageDailySpending: avgDailySpending,
+        insights: insights,
+        totalExpenses: monthExpenses.length
       }
     });
   } catch (error) {
