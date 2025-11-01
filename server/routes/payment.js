@@ -87,10 +87,16 @@ router.post('/create-order', authenticateToken, async (req, res) => {
     });
 
     // Create Razorpay order
+    // Generate short receipt ID (must be <= 40 characters)
+    // Format: rcpt_<userId_last8chars>_<timestamp_last8chars>
+    const userIdShort = req.user._id.toString().slice(-8);
+    const timestampShort = Date.now().toString().slice(-8);
+    const receiptId = `rcpt_${userIdShort}_${timestampShort}`; // Max 27 chars
+    
     const options = {
       amount: amount,
       currency: 'INR',
-      receipt: `receipt_${req.user._id}_${Date.now()}`,
+      receipt: receiptId,
       notes: {
         userId: req.user._id.toString(),
         plan: plan,
