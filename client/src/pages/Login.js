@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Receipt, Users, TrendingUp, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -8,10 +8,28 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const redirectTimeoutRef = useRef(null);
 
   const handleGoogleLogin = () => {
-    if (isRedirecting) return; // prevent multiple rapid clicks
+    // Prevent multiple rapid clicks
+    if (isRedirecting) {
+      console.log('Login already in progress, ignoring click');
+      return;
+    }
+
+    // Check if we recently attempted login (prevent rapid retries)
+    const lastAttempt = localStorage.getItem('lastLoginAttempt');
+    if (lastAttempt) {
+      const timeSinceLastAttempt = Date.now() - parseInt(lastAttempt, 10);
+      if (timeSinceLastAttempt < 2000) { // Less than 2 seconds
+        console.log('Too soon since last login attempt, please wait');
+        return;
+      }
+    }
+
     setIsRedirecting(true);
+    localStorage.setItem('lastLoginAttempt', Date.now().toString());
+
     // Check if we're in demo mode
     const isDemo = window.location.search.includes('demo=true');
     if (isDemo) {
@@ -35,9 +53,28 @@ const Login = () => {
       return;
     }
     
-    // Normal Google OAuth flow
-    window.location.href = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/google`;
+    // Normal Google OAuth flow - use replace to prevent back button issues
+    const authUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/google`;
+    
+    // Clear any existing timeout
+    if (redirectTimeoutRef.current) {
+      clearTimeout(redirectTimeoutRef.current);
+    }
+
+    // Small delay to ensure state is updated before redirect
+    redirectTimeoutRef.current = setTimeout(() => {
+      window.location.href = authUrl;
+    }, 100);
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const features = [
     {

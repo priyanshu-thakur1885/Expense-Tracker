@@ -1,10 +1,30 @@
 const express = require('express');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { generateToken } = require('../middleware/auth');
 const User = require('../models/User');
 
 const router = express.Router();
+
+// Rate limiter for auth endpoints - more lenient to avoid false positives
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // limit each IP to 30 login attempts per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many login attempts, please try again later.',
+  handler: (req, res) => {
+    res.status(429).json({ 
+      message: 'Too many login attempts, please try again later.',
+      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000) || 60
+    });
+  },
+  skipSuccessfulRequests: true, // Don't count successful logins
+});
+
+// Apply rate limiter to login endpoint
+router.use('/google', authLimiter);
 
 /* ======================
    GOOGLE AUTH LOGIN
@@ -13,6 +33,14 @@ router.get('/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(503).json({ 
       message: 'Google OAuth not configured. Please use demo mode.' 
+    });
+  }
+
+  // Check if this is a retry after rate limit (prevent loops)
+  if (req.headers['x-retry-attempt']) {
+    return res.status(429).json({ 
+      message: 'Too many requests, please wait a moment before trying again.',
+      retryAfter: 60 // Wait 60 seconds
     });
   }
 

@@ -42,12 +42,37 @@
 
   // Rate limiting (disabled for development)
   if (process.env.NODE_ENV === 'production') {
+    // General rate limiter - more lenient
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 100, // limit each IP to 100 requests per windowMs
       standardHeaders: true,
       legacyHeaders: false,
+      message: 'Too many requests, please try again later.',
+      handler: (req, res) => {
+        res.status(429).json({ 
+          message: 'Too many requests, please try again later.',
+          retryAfter: Math.ceil(req.rateLimit.resetTime / 1000)
+        });
+      }
     });
+    
+    // More lenient rate limiter for auth endpoints (login attempts)
+    const authLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 20, // limit each IP to 20 login attempts per 15 minutes
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: 'Too many login attempts, please try again later.',
+      handler: (req, res) => {
+        res.status(429).json({ 
+          message: 'Too many login attempts, please try again later.',
+          retryAfter: Math.ceil(req.rateLimit.resetTime / 1000)
+        });
+      },
+      skipSuccessfulRequests: true, // Don't count successful logins
+    });
+    
     app.use(limiter);
   }
 
