@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -32,7 +32,7 @@ import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
 import { format } from 'date-fns';
 
 const Analytics = () => {
-  const { subscription, checkAccessWithRefresh } = useFeatureAccess();
+  const { subscription, checkAccessWithRefresh, checkAccess } = useFeatureAccess();
   const [stats, setStats] = useState(null);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,23 +40,39 @@ const Analytics = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
+  const [hasAccess, setHasAccess] = useState(false);
 
+  // Check access once on mount
   useEffect(() => {
-    // Check access when component loads or subscription changes
-    const checkAccess = async () => {
-      const hasAccess = await checkAccessWithRefresh('advancedAnalytics');
-      if (!hasAccess) {
+    const verifyAccess = async () => {
+      const access = await checkAccessWithRefresh('advancedAnalytics');
+      setHasAccess(access);
+      if (!access) {
         setRequiredPlanForFeature('premium');
         setShowUpgradeModal(true);
       } else {
         setShowUpgradeModal(false);
-        fetchAnalytics();
       }
     };
-    checkAccess();
-  }, [period, selectedDate, subscription]);
+    verifyAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const fetchAnalytics = async () => {
+  // Update access when subscription changes (but don't refresh)
+  useEffect(() => {
+    if (subscription) {
+      const access = checkAccess('advancedAnalytics');
+      setHasAccess(access);
+      if (!access) {
+        setShowUpgradeModal(true);
+      } else {
+        setShowUpgradeModal(false);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscription]);
+
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       let statsUrl = `/api/expenses/stats/summary?period=${period}`;
@@ -78,7 +94,14 @@ const Analytics = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, selectedDate]);
+
+  // Fetch analytics when period or selectedDate changes (only if we have access)
+  useEffect(() => {
+    if (hasAccess) {
+      fetchAnalytics();
+    }
+  }, [period, selectedDate, hasAccess, fetchAnalytics]);
 
   const getCategoryColor = (category) => {
     const colors = {
