@@ -90,7 +90,15 @@ export const useFeatureAccess = () => {
   };
 
   const checkAccessWithRefresh = async (feature) => {
-    // Refresh subscription before checking to ensure we have latest data
+    // If subscription is already loaded, use it immediately (no delay)
+    if (subscription) {
+      const hasAccess = hasFeatureAccess(subscription.plan, feature);
+      // Refresh in background for next time, but don't wait for it
+      fetchSubscription().catch(err => console.error('Background refresh failed:', err));
+      return hasAccess;
+    }
+    
+    // Only refresh if subscription is not loaded yet
     const currentSub = await fetchSubscription();
     if (!currentSub) return false;
     return hasFeatureAccess(currentSub.plan, feature);
