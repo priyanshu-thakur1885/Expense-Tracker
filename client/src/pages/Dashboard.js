@@ -743,7 +743,10 @@ const Dashboard = () => {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Recent Expenses
           </h2>
-          <button className="text-primary-600 hover:text-primary-500 text-sm font-medium">
+          <button 
+            onClick={() => navigate('/expenses')}
+            className="text-primary-600 hover:text-primary-500 text-sm font-medium transition-colors"
+          >
             View All
           </button>
         </div>
