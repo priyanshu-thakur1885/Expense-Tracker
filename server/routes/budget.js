@@ -12,11 +12,35 @@ router.get('/', authenticateToken, async (req, res) => {
     
     if (!budget) {
       // Create default budget if none exists
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       budget = new Budget({
         userId: req.user._id,
         monthlyLimit: 4000, // Default ₹4000
-        currentSpent: 0
+        currentSpent: 0,
+        startDate: startOfMonth,
+        endDate: endOfMonth
       });
+      await budget.save();
+    }
+
+    // Auto-reset at start of each new month
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const isOutsideCurrentMonth = budget.startDate < startOfThisMonth || budget.endDate < startOfThisMonth;
+    if (isOutsideCurrentMonth) {
+      // Recalculate currentSpent from expenses of current month
+      const expenses = await Expense.find({
+        userId: req.user._id,
+        date: { $gte: startOfThisMonth, $lte: endOfThisMonth }
+      });
+      const currentSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+      budget.startDate = startOfThisMonth;
+      budget.endDate = endOfThisMonth;
+      budget.currentSpent = currentSpent;
       await budget.save();
     }
 
