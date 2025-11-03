@@ -428,8 +428,17 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         break;
       case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        if (date) {
+          // Allow querying any month by passing date=YYYY-MM or YYYY-MM-DD
+          const parts = date.split('-');
+          const year = parseInt(parts[0]);
+          const month = parseInt(parts[1]) - 1; // 0-index
+          startDate = new Date(year, month, 1);
+          endDate = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        } else {
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        }
         break;
       case 'year':
         startDate = new Date(now.getFullYear(), 0, 1);

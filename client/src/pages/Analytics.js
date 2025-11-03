@@ -41,6 +41,9 @@ const Analytics = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
   const [hasAccess, setHasAccess] = useState(false);
+  const [budgetInfo, setBudgetInfo] = useState(null); // monthlyLimit etc
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0,7)); // YYYY-MM
+  const [monthlySummary, setMonthlySummary] = useState({ spent: 0, delta: 0 });
 
   // Check access once on mount
   useEffect(() => {
@@ -86,12 +89,14 @@ const Analytics = () => {
         statsUrl += `&date=${selectedDate}`;
       }
       
-      const [statsResponse, insightsResponse] = await Promise.all([
+      const [statsResponse, insightsResponse, budgetResponse] = await Promise.all([
         axios.get(statsUrl),
-        axios.get('/api/budget/insights')
+        axios.get('/api/budget/insights'),
+        axios.get('/api/budget')
       ]);
       setStats(statsResponse.data.stats);
       setInsights(insightsResponse.data.insights);
+      setBudgetInfo(budgetResponse.data.budget);
     } catch (error) {
       console.error('Error fetching analytics:', error);
       toast.error('Failed to load analytics data');
@@ -106,6 +111,23 @@ const Analytics = () => {
       fetchAnalytics();
     }
   }, [period, selectedDate, hasAccess, fetchAnalytics]);
+
+  // Fetch monthly saving/overspending for selected month
+  useEffect(() => {
+    const fetchMonthly = async () => {
+      if (!hasAccess) return;
+      try {
+        const dateParam = `${selectedMonth}-01`;
+        const resp = await axios.get(`/api/expenses/stats/summary?period=month&date=${dateParam}`);
+        const spent = resp.data?.stats?.totalSpent || 0;
+        const limit = budgetInfo?.monthlyLimit || 0;
+        setMonthlySummary({ spent, delta: limit - spent });
+      } catch (err) {
+        console.error('Monthly summary error:', err);
+      }
+    };
+    fetchMonthly();
+  }, [selectedMonth, hasAccess, budgetInfo]);
 
   const getCategoryColor = (category) => {
     const colors = {
@@ -331,6 +353,44 @@ const Analytics = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Monthly Savings / Overspending */}
+      {budgetInfo && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-6 shadow-sm border border-gray-200/50 dark:border-gray-700/50"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Monthly Savings / Overspending</h2>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="input"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-gray-600 dark:text-gray-300">Budget</p>
+              <p className="text-gray-900 dark:text-white font-semibold">₹{Number(budgetInfo.monthlyLimit || 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-gray-600 dark:text-gray-300">Spent ({selectedMonth})</p>
+              <p className="text-gray-900 dark:text-white font-semibold">₹{Number(monthlySummary.spent || 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-gray-600 dark:text-gray-300">Result</p>
+              {monthlySummary.delta >= 0 ? (
+                <p className="font-semibold text-success-600 dark:text-success-400">Saved ₹{Math.abs(monthlySummary.delta).toFixed(2)}</p>
+              ) : (
+                <p className="font-semibold text-danger-600 dark:text-danger-400">Exceeded by -₹{Math.abs(monthlySummary.delta).toFixed(2)}</p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
