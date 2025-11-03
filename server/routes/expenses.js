@@ -291,56 +291,228 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get expense statistics
 router.get('/stats/summary', authenticateToken, async (req, res) => {
   try {
-    const { period, date } = req.query;
-    const userId = req.user.id;
-
-    const query = { userId };
-    const now = new Date();
-
-    if (period === 'today') {
-      const start = new Date(now.setHours(0, 0, 0, 0));
-      const end = new Date(now.setHours(23, 59, 59, 999));
-      query.date = { $gte: start, $lte: end };
-    } else if (period === 'week') {
-      const start = new Date(now.setDate(now.getDate() - 7));
-      query.date = { $gte: start };
-    } else if (period === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      query.date = { $gte: start };
-    } else if (period === 'date' && date) {
-      const d = new Date(date);
-      const start = new Date(d.setHours(0, 0, 0, 0));
-      const end = new Date(d.setHours(23, 59, 59, 999));
-      query.date = { $gte: start, $lte: end };
+    // Read query params early so they are available in demo mode too
+    const { period = 'month', date } = req.query;
+    // Handle demo mode
+    if (req.user._id === '507f1f77bcf86cd799439011') {
+      let demoStats;
+      
+      if (period === 'today') {
+        demoStats = {
+          totalSpent: 180,
+          totalExpenses: 1,
+          averageExpense: 180,
+          categoryStats: { dinner: 180 },
+          foodCourtStats: { 'Food Court 2': 180 },
+          dailyStats: { [new Date().toISOString().split('T')[0]]: 180 },
+          period,
+          startDate: new Date(new Date().setHours(0, 0, 0, 0)),
+          endDate: new Date(new Date().setHours(23, 59, 59, 999))
+        };
+      } else if (period === 'date') {
+        // For specific date, check if it matches one of our demo dates
+        const selectedDateStr = date;
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const dayBeforeYesterday = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        let dailyAmount = 0;
+        let categoryStats = {};
+        let foodCourtStats = {};
+        
+        if (selectedDateStr === today) {
+          dailyAmount = 180;
+          categoryStats = { dinner: 180 };
+          foodCourtStats = { 'Food Court 2': 180 };
+        } else if (selectedDateStr === yesterday) {
+          dailyAmount = 25;
+          categoryStats = { beverage: 25 };
+          foodCourtStats = { 'Café': 25 };
+        } else if (selectedDateStr === dayBeforeYesterday) {
+          dailyAmount = 120;
+          categoryStats = { lunch: 120 };
+          foodCourtStats = { 'Food Court 1': 120 };
+        } else {
+          // For any other date, show some random demo data based on the date
+          const dateObj = new Date(selectedDateStr);
+          const dayOfWeek = dateObj.getDay();
+          const dayOfMonth = dateObj.getDate();
+          
+          // Generate different amounts based on day of week and day of month
+          if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
+            dailyAmount = Math.floor(Math.random() * 200) + 50; // 50-250
+            categoryStats = { snacks: dailyAmount };
+            foodCourtStats = { 'Weekend Café': dailyAmount };
+          } else if (dayOfMonth % 7 === 0) { // Every 7th day
+            dailyAmount = Math.floor(Math.random() * 300) + 100; // 100-400
+            categoryStats = { lunch: dailyAmount };
+            foodCourtStats = { 'Special Court': dailyAmount };
+          } else {
+            dailyAmount = Math.floor(Math.random() * 150) + 30; // 30-180
+            categoryStats = { breakfast: dailyAmount };
+            foodCourtStats = { 'Regular Court': dailyAmount };
+          }
+        }
+        
+        demoStats = {
+          totalSpent: dailyAmount,
+          totalExpenses: dailyAmount > 0 ? 1 : 0,
+          averageExpense: dailyAmount,
+          categoryStats,
+          foodCourtStats,
+          dailyStats: { [selectedDateStr]: dailyAmount },
+          period,
+          startDate: new Date(selectedDateStr + 'T00:00:00'),
+          endDate: new Date(selectedDateStr + 'T23:59:59')
+        };
+      } else {
+        demoStats = {
+          totalSpent: 325,
+          totalExpenses: 3,
+          averageExpense: 108.33,
+          categoryStats: { lunch: 120, beverage: 25, dinner: 180 },
+          foodCourtStats: { 'Food Court 1': 120, 'Café': 25, 'Food Court 2': 180 },
+          dailyStats: {
+            [new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]]: 120,
+            [new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]]: 25,
+            [new Date().toISOString().split('T')[0]]: 180
+          },
+          period,
+          startDate: new Date(),
+          endDate: new Date()
+        };
+      }
+      
+      return res.json({ success: true, stats: demoStats });
     }
 
-    const expenses = await Expense.find(query);
+    const userId = req.user._id;
+    
+    console.log('Analytics request - Period:', period, 'Date:', date, 'User:', userId);
+    
+    let startDate, endDate;
+    const now = new Date();
+    
+    switch (period) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        break;
+      case 'date':
+        if (!date) {
+          return res.status(400).json({ message: 'Date parameter is required for date period' });
+        }
+        
+        // Parse the date string properly (YYYY-MM-DD format)
+        const dateParts = date.split('-');
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
+        const day = parseInt(dateParts[2]);
+        
+        // Create dates in local timezone to avoid timezone issues
+        startDate = new Date(year, month, day, 0, 0, 0, 0);
+        endDate = new Date(year, month, day, 23, 59, 59, 999);
+        
+        console.log('Date filtering - Start:', startDate, 'End:', endDate, 'Original date:', date);
+        console.log('Date range in ISO:', startDate.toISOString(), 'to', endDate.toISOString());
+        break;
+      case 'week':
+        // Last 7 days (including today)
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 6);
+        startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
 
-    const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const totalExpenses = expenses.length;
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
 
+    let expenses;
+    
+    if (period === 'date') {
+      // For specific date, use string comparison to avoid timezone issues
+      const allExpenses = await Expense.find({ userId });
+      
+      console.log('All expenses for user:', allExpenses.length);
+      console.log('All expense dates:', allExpenses.map(exp => exp.date.toISOString().split('T')[0]));
+      
+      // Filter expenses by the selected date
+      const targetDateStr = date; // This is in YYYY-MM-DD format
+      expenses = allExpenses.filter(expense => {
+  const expenseDate = new Date(expense.date);
+  return (
+    expenseDate.getFullYear() === startDate.getFullYear() &&
+    expenseDate.getMonth() === startDate.getMonth() &&
+    expenseDate.getDate() === startDate.getDate()
+  );
+});
+
+      
+      console.log('Found expenses for date', targetDateStr, ':', expenses.length);
+      console.log('Filtered expense dates:', expenses.map(exp => exp.date.toISOString().split('T')[0]));
+    } else {
+      // For other periods, use the original date range approach
+      expenses = await Expense.find({
+        userId,
+        date: { $gte: startDate, $lte: endDate }
+      });
+      
+      console.log('Found expenses:', expenses.length, 'for date range:', startDate, 'to', endDate);
+    }
+
+    const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     const categoryStats = {};
     const foodCourtStats = {};
     const dailyStats = {};
 
-    expenses.forEach(e => {
-      categoryStats[e.category] = (categoryStats[e.category] || 0) + e.amount;
-      foodCourtStats[e.foodCourt] = (foodCourtStats[e.foodCourt] || 0) + e.amount;
-      const d = new Date(e.date).toISOString().split('T')[0];
-      dailyStats[d] = (dailyStats[d] || 0) + e.amount;
+    expenses.forEach(expense => {
+      // Category statistics
+      categoryStats[expense.category] = (categoryStats[expense.category] || 0) + expense.amount;
+      
+      // Food court statistics
+      foodCourtStats[expense.foodCourt] = (foodCourtStats[expense.foodCourt] || 0) + expense.amount;
+      
+      // Daily statistics
+      const day = expense.date.toISOString().split('T')[0];
+      dailyStats[day] = (dailyStats[day] || 0) + expense.amount;
     });
 
+    const finalStats = {
+      totalSpent,
+      totalExpenses: expenses.length,
+      averageExpense: expenses.length > 0 ? totalSpent / expenses.length : 0,
+      categoryStats,
+      foodCourtStats,
+      dailyStats,
+      period,
+      startDate,
+      endDate
+    };
+    
+    console.log('Returning stats:', finalStats);
+    
     res.json({
-      stats: { totalSpent, totalExpenses, categoryStats, foodCourtStats, dailyStats }
+      success: true,
+      stats: finalStats
     });
-  } catch (err) {
-    console.error('Error fetching analytics summary:', err);
-    res.status(500).json({ message: 'Error generating analytics summary' });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({ message: 'Error fetching statistics' });
   }
 });
-
 // Get dynamic insights and recommendations
 router.get('/insights', authenticateToken, async (req, res) => {
   const userId = req.user._id;
