@@ -667,6 +667,20 @@ const Dashboard = () => {
           {getBudgetStatusMessage(budget.status, budget.percentage)}
         </p>
 
+        {budget?.lastMonth && (
+          <div className="mt-2 text-sm">
+            {budget.lastMonth.delta >= 0 ? (
+              <span className="text-success-600 dark:text-success-400">
+                Last month: saved ₹{Math.abs(budget.lastMonth.delta).toFixed(2)}
+              </span>
+            ) : (
+              <span className="text-danger-600 dark:text-danger-400">
+                Last month: exceeded by -₹{Math.abs(budget.lastMonth.delta).toFixed(2)}
+              </span>
+            )}
+          </div>
+        )}
+
         {budget.dailyTarget > 0 && (
           <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <p className="text-sm text-gray-600 dark:text-gray-300">

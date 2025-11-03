@@ -266,7 +266,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     
     // Get current month expenses
     const expenses = await Expense.find({
@@ -437,7 +437,11 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
           remaining: budget.remainingBudget,
           percentage: budget.spendingPercentage,
           status: budget.status,
-          dailyTarget: budget.dailyTarget
+          dailyTarget: budget.dailyTarget,
+          lastMonth: {
+            spent: prevMonthSpent,
+            delta: budget.monthlyLimit - prevMonthSpent
+          }
         },
         today: {
           spent: todaySpent,

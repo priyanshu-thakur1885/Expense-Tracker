@@ -44,7 +44,26 @@ router.get('/', authenticateToken, async (req, res) => {
       await budget.save();
     }
 
-    res.json({ success: true, budget });
+    // Compute last month's spending and delta against current monthlyLimit
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const prevExpenses = await Expense.find({
+      userId: req.user._id,
+      date: { $gte: prevMonthStart, $lte: prevMonthEnd }
+    });
+    const lastMonthSpent = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const lastMonthDelta = (budget.monthlyLimit || 0) - lastMonthSpent; // positive=Saved, negative=Exceeded
+
+    res.json({ 
+      success: true, 
+      budget: {
+        ...budget.toJSON(),
+        lastMonth: {
+          spent: lastMonthSpent,
+          delta: lastMonthDelta
+        }
+      }
+    });
   } catch (error) {
     console.error('Get budget error:', error);
     res.status(500).json({ message: 'Error fetching budget' });
@@ -274,7 +293,26 @@ const recentExpenses = await Expense.find({
       });
     }
 
-    res.json({ success: true, insights });
+    // Compute carryover/exceed for previous month
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const prevExpenses = await Expense.find({
+      userId: req.user._id,
+      date: { $gte: prevMonthStart, $lte: prevMonthEnd }
+    });
+    const lastMonthSpent = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const lastMonthDelta = (budget.monthlyLimit || 0) - lastMonthSpent;
+
+    res.json({ 
+      success: true, 
+      insights: {
+        ...insights,
+        lastMonth: {
+          spent: lastMonthSpent,
+          delta: lastMonthDelta
+        }
+      } 
+    });
   } catch (error) {
     console.error('Get insights error:', error);
     res.status(500).json({ message: 'Error fetching insights' });
