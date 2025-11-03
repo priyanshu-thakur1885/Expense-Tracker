@@ -456,40 +456,8 @@ const Dashboard = () => {
           </div>
         </div>
       </motion.div>
-
-      {/* Last Month Summary */}
-      {budget?.lastMonth && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}
-          className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-6 shadow-sm border border-gray-200/50 dark:border-gray-700/50"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Last Month Summary
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300">Budget</p>
-              <p className="text-gray-900 dark:text-white font-semibold">₹{budget.monthlyLimit.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 dark:text-gray-300">Spent (last month)</p>
-              <p className="text-gray-900 dark:text-white font-semibold">₹{Number(budget.lastMonth.spent || 0).toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 dark:text-gray-300">Result</p>
-              {budget.lastMonth.delta >= 0 ? (
-                <p className="font-semibold text-success-600 dark:text-success-400">Saved ₹{Math.abs(budget.lastMonth.delta).toFixed(2)}</p>
-              ) : (
-                <p className="font-semibold text-danger-600 dark:text-danger-400">Exceeded by -₹{Math.abs(budget.lastMonth.delta).toFixed(2)}</p>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      )}
+{/* 
+    
 
       {/* Subscription Plans Banner */}
       <motion.div
