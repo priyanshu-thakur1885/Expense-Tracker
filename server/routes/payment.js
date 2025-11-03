@@ -52,11 +52,27 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       userEmail: req.user.email
     });
 
+    // Validate Razorpay initialization
     if (!razorpay) {
       console.error('❌ Razorpay not initialized');
+      console.error('Razorpay keys check:', {
+        keyId: RAZORPAY_KEY_ID ? 'Present' : 'Missing',
+        keySecret: RAZORPAY_KEY_SECRET ? 'Present' : 'Missing'
+      });
       return res.status(503).json({ 
         success: false,
-        message: 'Payment service is not configured. Please contact administrator.' 
+        message: 'Payment service is not configured. Please contact administrator.',
+        error: 'Razorpay not initialized'
+      });
+    }
+
+    // Test Razorpay connection by checking if it has required methods
+    if (typeof razorpay.orders?.create !== 'function') {
+      console.error('❌ Razorpay orders API not available');
+      return res.status(503).json({ 
+        success: false,
+        message: 'Payment service is not properly configured. Please contact administrator.',
+        error: 'Razorpay API unavailable'
       });
     }
 
@@ -142,20 +158,45 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       code: error.code,
       statusCode: error.statusCode,
       error_description: error.error?.description,
-      description: error.description
+      description: error.description,
+      httpStatusCode: error.httpStatusCode
     });
     
-    // Return more detailed error message
-    const errorMessage = error.error?.description || 
-                        error.description || 
-                        error.message || 
-                        'Error creating order';
+    // Determine the appropriate HTTP status code
+    let statusCode = 500;
+    let errorMessage = 'Error creating order';
     
-    res.status(500).json({ 
+    // Handle Razorpay specific errors
+    if (error.httpStatusCode) {
+      statusCode = error.httpStatusCode;
+      errorMessage = error.error?.description || error.description || error.message;
+    } else if (error.statusCode) {
+      statusCode = error.statusCode;
+      errorMessage = error.error?.description || error.description || error.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    // Provide user-friendly error messages
+    if (errorMessage.includes('Invalid') || errorMessage.includes('authentication')) {
+      errorMessage = 'Payment service configuration error. Please contact support.';
+      statusCode = 503;
+    } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+      errorMessage = 'Network error connecting to payment gateway. Please try again.';
+    } else if (errorMessage.includes('amount') || errorMessage.includes('currency')) {
+      errorMessage = 'Invalid payment amount. Please try again.';
+      statusCode = 400;
+    }
+    
+    res.status(statusCode).json({ 
       success: false,
-      message: 'Error creating order', 
+      message: errorMessage, 
       error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: process.env.NODE_ENV === 'development' ? {
+        originalError: error.message,
+        stack: error.stack,
+        code: error.code
+      } : undefined
     });
   }
 });

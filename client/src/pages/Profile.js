@@ -318,10 +318,10 @@ const Profile = () => {
       });
 
       if (uploadResponse.data.success) {
-        updateUser({
-          ...user,
-          wallpaper: uploadResponse.data.user.wallpaper
-        });
+        // Update user with full user object from server to ensure we have all data
+        // Use a small delay to ensure state updates don't cause race conditions
+        await new Promise(resolve => setTimeout(resolve, 100));
+        updateUser(uploadResponse.data.user);
         setWallpaperPreview(uploadResponse.data.user.wallpaper);
         toast.success('Wallpaper updated successfully! 🎨');
       }
@@ -350,11 +350,16 @@ const Profile = () => {
 
     setUploadingWallpaper(true);
     try {
-      await axios.delete('/api/user/wallpaper');
-      updateUser({
-        ...user,
-        wallpaper: ''
-      });
+      const response = await axios.delete('/api/user/wallpaper');
+      if (response.data.success && response.data.user) {
+        updateUser(response.data.user);
+      } else {
+        // Fallback if user object not returned
+        updateUser({
+          ...user,
+          wallpaper: ''
+        });
+      }
       setWallpaperPreview('');
       toast.success('Wallpaper removed successfully');
     } catch (error) {

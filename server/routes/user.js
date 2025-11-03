@@ -106,9 +106,9 @@ router.put('/wallpaper', authenticateToken, wallpaperUpload.single('wallpaper'),
       req.user._id,
       { wallpaper: wallpaperData },
       { new: true }
-    ).select('-__v');
+    ).select('-__v -password');
 
-    res.json({ success: true, user: { wallpaper: user.wallpaper } });
+    res.json({ success: true, user });
   } catch (error) {
     console.error('Update wallpaper error:', error);
     res.status(500).json({ message: 'Error updating wallpaper' });
@@ -124,7 +124,7 @@ router.delete('/wallpaper', authenticateToken, async (req, res) => {
       { new: true }
     ).select('-__v -password');
 
-    res.json({ success: true, message: 'Wallpaper removed successfully' });
+    res.json({ success: true, message: 'Wallpaper removed successfully', user });
   } catch (error) {
     console.error('Remove wallpaper error:', error);
     res.status(500).json({ message: 'Error removing wallpaper' });

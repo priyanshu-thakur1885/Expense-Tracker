@@ -17,7 +17,18 @@ export const createPaymentOrder = async (plan) => {
       status: error.response?.status,
       statusText: error.response?.statusText
     });
-    throw error;
+    
+    // Extract and format a better error message
+    const errorMessage = error.response?.data?.error || 
+                        error.response?.data?.message || 
+                        error.message || 
+                        'Failed to create payment order';
+    
+    // Create a new error with the formatted message
+    const formattedError = new Error(errorMessage);
+    formattedError.response = error.response;
+    formattedError.status = error.response?.status;
+    throw formattedError;
   }
 };
 

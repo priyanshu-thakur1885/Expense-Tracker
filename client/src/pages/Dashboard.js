@@ -182,10 +182,26 @@ const Dashboard = () => {
       });
       
       // Show detailed error message
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          'Failed to initiate payment';
+      let errorMessage = 'Failed to create payment order';
+      
+      if (error.response?.data) {
+        // Server returned an error response
+        errorMessage = error.response.data.error || 
+                      error.response.data.message || 
+                      error.message;
+      } else if (error.message) {
+        // Network or other error
+        errorMessage = error.message;
+      }
+      
+      // Handle specific error cases
+      if (error.response?.status === 503) {
+        errorMessage = 'Payment service is not configured. Please contact support.';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || 'Invalid payment request. Please try again.';
+      } else if (!error.response) {
+        errorMessage = 'Network error: Could not connect to payment server. Please check your internet connection.';
+      }
       
       toast.error(`❌ ${errorMessage}`);
       setProcessingPayment(false);

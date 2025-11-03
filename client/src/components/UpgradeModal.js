@@ -234,8 +234,35 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'premium', onPaymentSucc
       
     } catch (error) {
       console.error('Payment error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to initiate payment';
-      toast.error(errorMessage);
+      console.error('Payment error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Show detailed error message
+      let errorMessage = 'Failed to create payment order';
+      
+      if (error.response?.data) {
+        // Server returned an error response
+        errorMessage = error.response.data.error || 
+                      error.response.data.message || 
+                      error.message;
+      } else if (error.message) {
+        // Network or other error
+        errorMessage = error.message;
+      }
+      
+      // Handle specific error cases
+      if (error.response?.status === 503) {
+        errorMessage = 'Payment service is not configured. Please contact support.';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || 'Invalid payment request. Please try again.';
+      } else if (!error.response) {
+        errorMessage = 'Network error: Could not connect to payment server. Please check your internet connection.';
+      }
+      
+      toast.error(`❌ ${errorMessage}`);
       setProcessingPayment(false);
       
       // Even if order creation fails, check if subscription was updated (in case of retry)

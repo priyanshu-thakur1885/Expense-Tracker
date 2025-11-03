@@ -50,7 +50,7 @@ const authReducer = (state, action) => {
     case 'UPDATE_USER':
       return {
         ...state,
-        user: { ...state.user, ...action.payload }
+        user: state.user ? { ...state.user, ...action.payload } : action.payload
       };
     case 'CLEAR_ERROR':
       return {
