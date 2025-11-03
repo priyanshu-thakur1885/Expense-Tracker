@@ -10,17 +10,27 @@ const router = express.Router();
 // Rate limiter for auth endpoints - more lenient to avoid false positives
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // limit each IP to 30 login attempts per 15 minutes
+  max: 60, // allow more attempts within window
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many login attempts, please try again later.',
   handler: (req, res) => {
+    // If browser navigation, redirect back to login with message
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const acceptsHtml = (req.headers.accept || '').includes('text/html');
+    const retryAfterSec = req.rateLimit?.resetTime instanceof Date
+      ? Math.max(1, Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000))
+      : 60;
+
+    if (acceptsHtml && !req.xhr) {
+      return res.redirect(`${clientUrl}/login?error=rate_limited&retry=${retryAfterSec}`);
+    }
+
     res.status(429).json({ 
       message: 'Too many login attempts, please try again later.',
-      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000) || 60
+      retryAfter: retryAfterSec
     });
   },
-  skipSuccessfulRequests: true, // Don't count successful logins
+  skipSuccessfulRequests: true,
 });
 
 // Apply rate limiter to login endpoint

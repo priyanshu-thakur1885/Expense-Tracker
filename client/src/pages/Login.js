@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Receipt, Users, TrendingUp, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const { login } = useAuth();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const redirectTimeoutRef = useRef(null);
@@ -75,6 +77,16 @@ const Login = () => {
       }
     };
   }, []);
+
+  // Show message if redirected here due to rate limiting
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const retry = searchParams.get('retry');
+    if (error === 'rate_limited') {
+      const seconds = parseInt(retry || '60', 10);
+      window.toast?.error?.(`Too many login attempts. Please try again in ${seconds}s.`);
+    }
+  }, [searchParams]);
 
   const features = [
     {
