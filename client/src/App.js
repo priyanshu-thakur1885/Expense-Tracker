@@ -24,6 +24,8 @@ const Analytics = lazy(() => import('./pages/Analytics'));
 const Profile = lazy(() => import('./pages/Profile'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
 function App() {
   useEffect(() => {
@@ -56,6 +58,8 @@ function App() {
                     {/* ---------- Public Routes ---------- */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
 
                     {/* ---------- Protected Routes ---------- */}
                     <Route
