@@ -829,6 +829,13 @@ const Profile = () => {
         </div>
       </motion.div>
 
+      {/* Legal links (subtle) */}
+      <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+        <a href="/terms" className="hover:underline">Terms of Service</a>
+        <span className="mx-2">•</span>
+        <a href="/privacy" className="hover:underline">Privacy Policy</a>
+      </div>
+
       {/* Upgrade Modal */}
       <UpgradeModal
         isOpen={showUpgradeModal}

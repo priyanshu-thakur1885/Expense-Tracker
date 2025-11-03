@@ -11,8 +11,6 @@ import {
   X,
   Crown,
   Bug,
-  FileText,
-  Shield,
   // Lightbulb, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -102,40 +100,7 @@ const Sidebar = () => {
               );
             })}
 
-            {/* Legal section */}
-            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="px-4 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Legal
-              </p>
-              <NavLink
-                to="/terms"
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`
-                }
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <FileText className="w-5 h-5 mr-3" />
-                Terms of Service
-              </NavLink>
-              <NavLink
-                to="/privacy"
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`
-                }
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Shield className="w-5 h-5 mr-3" />
-                Privacy Policy
-              </NavLink>
-            </div>
+            
           </nav>
 
           {/* Bug report, theme toggle and logout */}
