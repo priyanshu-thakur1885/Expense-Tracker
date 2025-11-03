@@ -50,6 +50,8 @@ const Analytics = () => {
       if (!access) {
         setRequiredPlanForFeature('premium');
         setShowUpgradeModal(true);
+        // Stop the loading spinner if user doesn't have access
+        setLoading(false);
       } else {
         setShowUpgradeModal(false);
       }
@@ -65,6 +67,8 @@ const Analytics = () => {
       setHasAccess(access);
       if (!access) {
         setShowUpgradeModal(true);
+        // Ensure we are not stuck in loading state
+        setLoading(false);
       } else {
         setShowUpgradeModal(false);
       }
