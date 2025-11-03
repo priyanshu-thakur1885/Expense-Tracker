@@ -165,10 +165,22 @@ router.get('/insights', authenticateToken, async (req, res) => {
       return res.json({ success: true, ...demoInsights });
     }
 
-    const budget = await Budget.findOne({ userId: req.user._id });
+    let budget = await Budget.findOne({ userId: req.user._id });
     
+    // If user has no budget yet, create a sane default so analytics works
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      budget = new Budget({
+        userId: req.user._id,
+        monthlyLimit: 4000,
+        currentSpent: 0,
+        currency: 'INR',
+        startDate: startOfMonth,
+        endDate: endOfMonth
+      });
+      await budget.save();
     }
 
     const now = new Date();

@@ -429,11 +429,11 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
         break;
       case 'month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         break;
       case 'year':
         startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
         break;
       default:
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
