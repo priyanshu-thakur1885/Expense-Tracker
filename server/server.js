@@ -45,10 +45,15 @@
     // General rate limiter - more lenient
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100, // limit each IP to 100 requests per windowMs
+      max: 500, // allow higher throughput on Render
       standardHeaders: true,
       legacyHeaders: false,
       message: 'Too many requests, please try again later.',
+      skip: (req) => {
+        // Do not rate-limit auth redirects, sockets, or static assets
+        const p = req.path || '';
+        return p.startsWith('/api/auth') || p.startsWith('/socket.io') || p.startsWith('/uploads');
+      },
       handler: (req, res) => {
         res.status(429).json({ 
           message: 'Too many requests, please try again later.',

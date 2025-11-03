@@ -75,11 +75,16 @@ export const SocketProvider = ({ children }) => {
       transports: ['websocket', 'polling']
     });
 
+    // Store socket instance so other hooks/components can use it
+    setSocket(newSocket);
+
     // Connection events
     newSocket.on('connect', () => {
       console.log('✅ Socket connected:', newSocket.id);
       console.log('🔗 Server URL:', process.env.REACT_APP_API_URL || 'http://localhost:5000');
       setIsConnected(true);
+      // Request current online users list once connected
+      newSocket.emit('get-online-users');
     });
 
     newSocket.on('disconnect', () => {
@@ -190,6 +195,18 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('online-users', (users) => {
       console.log('👥 Online users received:', users);
       setOnlineUsers(users);
+    });
+
+    // Live presence events
+    newSocket.on('user-online', ({ userId }) => {
+      setOnlineUsers(prev => {
+        if (prev.some(u => u.userId === userId)) return prev;
+        return [...prev, { userId, isOnline: true }];
+      });
+    });
+
+    newSocket.on('user-offline', ({ userId }) => {
+      setOnlineUsers(prev => prev.filter(u => u.userId !== userId));
     });
 
     newSocket.on('user-info', (data) => {

@@ -67,6 +67,8 @@ class SocketService {
       
       // Store user connection
       this.connectedUsers.set(socket.userId, socket.id);
+      // Broadcast presence to all clients
+      this.io.emit('user-online', { userId: socket.userId });
       
       if (socket.isAdmin) {
         this.adminSockets.add(socket.id);
@@ -154,16 +156,14 @@ class SocketService {
         }
       });
 
-      // Handle getting online users (admin only)
+      // Handle getting online users (available to all authenticated users)
       socket.on('get-online-users', () => {
-        if (socket.isAdmin) {
-          const onlineUsers = Array.from(this.connectedUsers.keys()).map(userId => ({
-            userId,
-            socketId: this.connectedUsers.get(userId),
-            isOnline: true
-          }));
-          socket.emit('online-users', onlineUsers);
-        }
+        const onlineUsers = Array.from(this.connectedUsers.keys()).map(userId => ({
+          userId,
+          socketId: this.connectedUsers.get(userId),
+          isOnline: true
+        }));
+        socket.emit('online-users', onlineUsers);
       });
 
       // Handle getting user info (admin only)
@@ -183,6 +183,8 @@ class SocketService {
         console.log(`User disconnected: ${socket.user.name}`);
         this.connectedUsers.delete(socket.userId);
         this.adminSockets.delete(socket.id);
+        // Broadcast presence update
+        this.io.emit('user-offline', { userId: socket.userId });
         
         // Notify admins about user going offline
         if (socket.isAdmin) {
