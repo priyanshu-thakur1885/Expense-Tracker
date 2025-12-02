@@ -816,7 +816,7 @@ const Dashboard = () => {
           </div>
         )}
         
-        {/* Floating Chat Component */}
+
         
       </motion.div>
 
