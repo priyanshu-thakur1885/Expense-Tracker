@@ -29,7 +29,8 @@ const EditExpense = () => {
     { value: 'lunch', label: 'Lunch' },
     { value: 'dinner', label: 'Dinner' },
     { value: 'snacks', label: 'Snacks' },
-    { value: 'beverages', label: 'Beverages' },
+    { value: 'drinks', label: 'Drinks' },
+    { value: 'groceries', label: 'Groceries' },
     { value: 'other', label: 'Other' }
   ];
 

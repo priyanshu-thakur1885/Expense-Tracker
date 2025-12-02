@@ -135,7 +135,8 @@ const Analytics = () => {
       lunch: '#3b82f6',
       dinner: '#8b5cf6',
       snacks: '#eab308',
-      beverages: '#22c55e',
+      Drinks: '#22c55e',
+      Groceries: '#00FFFF',
       other: '#6b7280'
     };
     return colors[category] || colors.other;

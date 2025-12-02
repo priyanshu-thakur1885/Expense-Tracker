@@ -21,7 +21,7 @@ const expenseSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['breakfast', 'lunch', 'dinner', 'snacks', 'beverages', 'other'],
+    enum: ['breakfast', 'lunch', 'dinner', 'snacks', 'drinks','groceries', 'other'],
     default: 'other'
   },
   broadCategory: {

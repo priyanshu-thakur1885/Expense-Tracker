@@ -391,7 +391,8 @@ const processImageForOCR = async (imageFile) => {
                 <option value="lunch">Lunch</option>
                 <option value="dinner">Dinner</option>
                 <option value="snacks">Snacks</option>
-                <option value="beverages">Beverages</option>
+                <option value="drinks">Drinks</option>
+                <option value="groceries">Groceries</option>
                 <option value="other">Other</option>
               </select>
             </div>

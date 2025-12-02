@@ -42,7 +42,7 @@ router.get('/', authenticateToken, async (req, res) => {
           userId: { _id: '507f1f77bcf86cd799439011', name: 'Demo Student', email: 'demo@lpu.in' },
           item: 'Coffee',
           amount: 25,
-          category: 'beverage',
+          category: 'drinks',
           foodCourt: 'Café',
           description: 'Morning coffee',
           tags: ['caffeine'],
@@ -329,7 +329,7 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
           foodCourtStats = { 'Food Court 2': 180 };
         } else if (selectedDateStr === yesterday) {
           dailyAmount = 25;
-          categoryStats = { beverage: 25 };
+          categoryStats = { drinks: 25 };
           foodCourtStats = { 'Café': 25 };
         } else if (selectedDateStr === dayBeforeYesterday) {
           dailyAmount = 120;
@@ -373,7 +373,7 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
           totalSpent: 325,
           totalExpenses: 3,
           averageExpense: 108.33,
-          categoryStats: { lunch: 120, beverage: 25, dinner: 180 },
+          categoryStats: { lunch: 120, drinks: 25, groceries: 55, dinner: 180 },
           foodCourtStats: { 'Food Court 1': 120, 'Café': 25, 'Food Court 2': 180 },
           dailyStats: {
             [new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]]: 120,
