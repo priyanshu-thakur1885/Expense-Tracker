@@ -817,7 +817,7 @@ const Dashboard = () => {
         )}
         
         {/* Floating Chat Component */}
-        <FloatingChat />
+        
       </motion.div>
 
       {/* Upgrade Modal */}
