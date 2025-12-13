@@ -39,8 +39,12 @@ const Layout = () => {
         />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-h-screen">
-          <Header toggleSidebar={toggleSidebar} />
+        <div
+          className={`flex-1 flex flex-col min-h-screen ${
+            isSidebarOpen ? "ml-64" : ""
+          }`}
+        >
+          <Header toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
           <main className="flex-1 p-6">
             <Outlet />
           </main>
