@@ -36,6 +36,9 @@ const Analytics = () => {
     useFeatureAccess();
   const [stats, setStats] = useState(null);
   const [insights, setInsights] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("today");
   const [fromDate, setFromDate] = useState("");
