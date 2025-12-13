@@ -187,7 +187,8 @@ const Analytics = () => {
     } else if (period === 'date') {
       // For specific date, show the selected date's data
       const selectedDateAmount = stats.dailyStats[selectedDate] || 0;
-      
+
+
       return [
         { date: format(new Date(selectedDate), 'MMM dd'), amount: selectedDateAmount }
       ];
@@ -232,6 +233,14 @@ const Analytics = () => {
       </div>
     );
   }
+const calculateAveragePerDay = () => {
+  if (!stats?.dailyStats) return 0;
+
+  const days = Object.keys(stats.dailyStats).length;
+  if (days === 0) return 0;
+
+  return stats.totalSpent / days;
+};
 
   return (
     <div className="space-y-6">
@@ -325,7 +334,7 @@ const Analytics = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Average Expense</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                ₹{(stats.totalExpenses > 0 ? stats.totalSpent / stats.totalExpenses : 0).toFixed(2)}
+                ₹{calculateAveragePerDay().toFixed(2)}
 
               </p>
             </div>
