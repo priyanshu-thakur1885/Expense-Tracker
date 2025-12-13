@@ -32,7 +32,7 @@ const Header = ({
           className={`relative ${
             !isSidebarOpen
               ? "absolute left-1/2 transform -translate-x-1/2"
-              : "flex-1 max-w-xl"
+              : "flex-1 max-w-2xl"
           }`}
         >
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -55,14 +55,14 @@ const Header = ({
           {user?.photo ? (
             <Link to="/profile">
               <img
-                className="h-10 w-10 rounded-full cursor-pointer"
+                className="h-12 w-12 rounded-full cursor-pointer"
                 src={user.photo}
                 alt=""
               />
             </Link>
           ) : (
             <Link to="/profile">
-              <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center text-white cursor-pointer">
+              <div className="h-12 w-12 rounded-full bg-primary-500 flex items-center justify-center text-white cursor-pointer">
                 {user?.name?.charAt(0)?.toUpperCase()}
               </div>
             </Link>

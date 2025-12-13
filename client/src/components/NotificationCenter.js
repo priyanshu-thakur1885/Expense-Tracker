@@ -170,7 +170,7 @@ const NotificationCenter = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors duration-200"
       >
-        <Bell className="w-6 h-6" />
+        <Bell className="w-8 h-8" />
         {totalUnreadCount > 0 && (
           <motion.span
             initial={{ scale: 0 }}
