@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Search, Menu } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
@@ -31,7 +32,7 @@ const Header = ({
           className={`relative ${
             !isSidebarOpen
               ? "absolute left-1/2 transform -translate-x-1/2"
-              : "flex-1 max-w-lg"
+              : "flex-1 max-w-xl"
           }`}
         >
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -52,11 +53,19 @@ const Header = ({
         >
           <NotificationCenter />
           {user?.photo ? (
-            <img className="h-8 w-8 rounded-full" src={user.photo} alt="" />
+            <Link to="/profile">
+              <img
+                className="h-10 w-10 rounded-full cursor-pointer"
+                src={user.photo}
+                alt=""
+              />
+            </Link>
           ) : (
-            <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
-              {user?.name?.charAt(0)?.toUpperCase()}
-            </div>
+            <Link to="/profile">
+              <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center text-white cursor-pointer">
+                {user?.name?.charAt(0)?.toUpperCase()}
+              </div>
+            </Link>
           )}
         </div>
       </div>
