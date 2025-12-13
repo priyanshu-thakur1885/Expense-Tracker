@@ -286,7 +286,7 @@ const Analytics = () => {
             className="input"
           >
             <option value="today">Today</option>
-            <option value="range">From – To Date</option>
+            <option value="range">Custom Range</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
             <option value="year">This Year</option>
