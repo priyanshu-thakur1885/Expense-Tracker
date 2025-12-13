@@ -64,7 +64,6 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                 <NavLink
                   key={item.name}
                   to={item.href}
-                  onClick={closeSidebar}
                   className={({ isActive }) =>
                     `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
                       isActive
@@ -112,7 +111,6 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
       {isOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50"
-          onClick={closeSidebar}
         />
       )}
 
