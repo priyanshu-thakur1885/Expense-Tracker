@@ -1,57 +1,62 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  TrendingUp, 
-  DollarSign, 
+import React, { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import {
+  TrendingUp,
+  DollarSign,
   Target,
   AlertTriangle,
   CheckCircle,
   BarChart3,
-  PieChart
-} from 'lucide-react';
-import { 
-  PieChart as RechartsPieChart, 
+  PieChart,
+} from "lucide-react";
+import {
+  PieChart as RechartsPieChart,
   Pie,
-  Cell, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart,
-  Line
-} from 'recharts';
-import axios from 'axios';
-import toast from 'react-hot-toast';
-import LoadingSpinner from '../components/LoadingSpinner';
-import FloatingChat from '../components/FloatingChat';
-import UpgradeModal from '../components/UpgradeModal';
-import { useFeatureAccess, hasFeatureAccess } from '../utils/featureGating';
-import { format } from 'date-fns';
+  Line,
+} from "recharts";
+import axios from "axios";
+import toast from "react-hot-toast";
+import LoadingSpinner from "../components/LoadingSpinner";
+import FloatingChat from "../components/FloatingChat";
+import UpgradeModal from "../components/UpgradeModal";
+import { useFeatureAccess, hasFeatureAccess } from "../utils/featureGating";
+import { format } from "date-fns";
 
 const Analytics = () => {
-  const { subscription, checkAccessWithRefresh, checkAccess } = useFeatureAccess();
+  const { subscription, checkAccessWithRefresh, checkAccess } =
+    useFeatureAccess();
   const [stats, setStats] = useState(null);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('today');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [period, setPeriod] = useState("today");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [requiredPlanForFeature, setRequiredPlanForFeature] = useState('premium');
+  const [requiredPlanForFeature, setRequiredPlanForFeature] =
+    useState("premium");
   const [hasAccess, setHasAccess] = useState(false);
   const [budgetInfo, setBudgetInfo] = useState(null); // monthlyLimit etc
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0,7)); // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(
+    new Date().toISOString().slice(0, 7)
+  ); // YYYY-MM
   const [monthlySummary, setMonthlySummary] = useState({ spent: 0, delta: 0 });
 
   // Check access once on mount
   useEffect(() => {
     const verifyAccess = async () => {
-      const access = await checkAccessWithRefresh('advancedAnalytics');
+      const access = await checkAccessWithRefresh("advancedAnalytics");
       setHasAccess(access);
       if (!access) {
-        setRequiredPlanForFeature('premium');
+        setRequiredPlanForFeature("premium");
         setShowUpgradeModal(true);
         // Stop the loading spinner if user doesn't have access
         setLoading(false);
@@ -66,7 +71,7 @@ const Analytics = () => {
   // Update access when subscription changes (but don't refresh)
   useEffect(() => {
     if (subscription) {
-      const access = checkAccess('advancedAnalytics');
+      const access = checkAccess("advancedAnalytics");
       setHasAccess(access);
       if (!access) {
         setShowUpgradeModal(true);
@@ -83,27 +88,28 @@ const Analytics = () => {
     try {
       setLoading(true);
       let statsUrl = `/api/expenses/stats/summary?period=${period}`;
-      
+
       // If period is 'date', add the specific date parameter
-      if (period === 'date') {
-        statsUrl += `&date=${selectedDate}`;
+      if (period === "range" && fromDate && toDate) {
+        statsUrl += `&startDate=${fromDate}&endDate=${toDate}`;
       }
-      
-      const [statsResponse, insightsResponse, budgetResponse] = await Promise.all([
-        axios.get(statsUrl),
-        axios.get('/api/budget/insights'),
-        axios.get('/api/budget')
-      ]);
+
+      const [statsResponse, insightsResponse, budgetResponse] =
+        await Promise.all([
+          axios.get(statsUrl),
+          axios.get("/api/budget/insights"),
+          axios.get("/api/budget"),
+        ]);
       setStats(statsResponse.data.stats);
       setInsights(insightsResponse.data.insights);
       setBudgetInfo(budgetResponse.data.budget);
     } catch (error) {
-      console.error('Error fetching analytics:', error);
-      toast.error('Failed to load analytics data');
+      console.error("Error fetching analytics:", error);
+      toast.error("Failed to load analytics data");
     } finally {
       setLoading(false);
     }
-  }, [period, selectedDate]);
+  }, [period, fromDate, toDate]);
 
   // Fetch analytics when period or selectedDate changes (only if we have access)
   useEffect(() => {
@@ -118,12 +124,14 @@ const Analytics = () => {
       if (!hasAccess) return;
       try {
         const dateParam = `${selectedMonth}-01`;
-        const resp = await axios.get(`/api/expenses/stats/summary?period=month&date=${dateParam}`);
+        const resp = await axios.get(
+          `/api/expenses/stats/summary?period=month&date=${dateParam}`
+        );
         const spent = resp.data?.stats?.totalSpent || 0;
         const limit = budgetInfo?.monthlyLimit || 0;
         setMonthlySummary({ spent, delta: limit - spent });
       } catch (err) {
-        console.error('Monthly summary error:', err);
+        console.error("Monthly summary error:", err);
       }
     };
     fetchMonthly();
@@ -131,75 +139,81 @@ const Analytics = () => {
 
   const getCategoryColor = (category) => {
     const colors = {
-      breakfast: '#f97316',
-      lunch: '#3b82f6',
-      dinner: '#8b5cf6',
-      snacks: '#eab308',
-      Drinks: '#22c55e',
-      Groceries: '#00FFFF',
-      other: '#6b7280'
+      breakfast: "#f97316",
+      lunch: "#3b82f6",
+      dinner: "#8b5cf6",
+      snacks: "#eab308",
+      Drinks: "#22c55e",
+      Groceries: "#00FFFF",
+      other: "#6b7280",
     };
     return colors[category] || colors.other;
   };
 
   const getFoodCourtColor = (index) => {
     const colors = [
-      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
-      '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'
+      "#3b82f6",
+      "#ef4444",
+      "#10b981",
+      "#f59e0b",
+      "#8b5cf6",
+      "#06b6d4",
+      "#84cc16",
+      "#f97316",
     ];
     return colors[index % colors.length];
   };
 
   const prepareCategoryData = () => {
     if (!stats?.categoryStats) return [];
-    
+
     return Object.entries(stats.categoryStats).map(([category, amount]) => ({
       name: category.charAt(0).toUpperCase() + category.slice(1),
       value: amount,
-      color: getCategoryColor(category)
+      color: getCategoryColor(category),
     }));
   };
 
   const prepareFoodCourtData = () => {
     if (!stats?.foodCourtStats) return [];
-    
+
     return Object.entries(stats.foodCourtStats)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 8)
       .map(([court, amount], index) => ({
-        name: court.replace(' Food Court', ''),
+        name: court.replace(" Food Court", ""),
         value: amount,
-        color: getFoodCourtColor(index)
+        color: getFoodCourtColor(index),
       }));
   };
 
   const prepareDailyData = () => {
     if (!stats?.dailyStats) return [];
-    
-    if (period === 'today') {
+
+    if (period === "today") {
       // For today, show hourly data if available, otherwise just show today's total
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       const todayAmount = stats.dailyStats[today] || 0;
-      
-      return [
-        { date: 'Today', amount: todayAmount }
-      ];
-    } else if (period === 'date') {
+
+      return [{ date: "Today", amount: todayAmount }];
+    } else if (period === "date") {
       // For specific date, show the selected date's data
       const selectedDateAmount = stats.dailyStats[selectedDate] || 0;
 
-
       return [
-        { date: format(new Date(selectedDate), 'MMM dd'), amount: selectedDateAmount }
+        {
+          date: format(new Date(selectedDate), "MMM dd"),
+          amount: selectedDateAmount,
+        },
       ];
     } else {
       const dailyEntries = Object.entries(stats.dailyStats)
         .sort(([a], [b]) => new Date(a) - new Date(b))
         .slice(-30); // Last 30 days
-      
+
       return dailyEntries.map(([date, amount]) => ({
-        date: format(new Date(date), 'MMM dd'),
-        amount: amount
+        date: format(new Date(date), "MMM dd"),
+        amount: amount,
       }));
     }
   };
@@ -229,18 +243,20 @@ const Analytics = () => {
   if (!stats || !insights) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">Failed to load analytics data</p>
+        <p className="text-gray-500 dark:text-gray-400">
+          Failed to load analytics data
+        </p>
       </div>
     );
   }
-const calculateAveragePerDay = () => {
-  if (!stats?.dailyStats) return 0;
+  const calculateAveragePerDay = () => {
+    if (!stats?.dailyStats) return 0;
 
-  const days = Object.keys(stats.dailyStats).length;
-  if (days === 0) return 0;
+    const days = Object.keys(stats.dailyStats).length;
+    if (days === 0) return 0;
 
-  return stats.totalSpent / days;
-};
+    return stats.totalSpent / days;
+  };
 
   return (
     <div className="space-y-6">
@@ -254,33 +270,40 @@ const calculateAveragePerDay = () => {
             Understand your spending patterns and get smart recommendations
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <select
             value={period}
             onChange={(e) => {
               setPeriod(e.target.value);
-              if (e.target.value === 'today') {
-                setSelectedDate(new Date().toISOString().split('T')[0]);
+              if (e.target.value === "today") {
+                setSelectedDate(new Date().toISOString().split("T")[0]);
               }
             }}
             className="input"
           >
             <option value="today">Today</option>
-            <option value="date">Specific Date</option>
+            <option value="range">From – To Date</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
             <option value="year">This Year</option>
           </select>
-          
-          {period === 'date' && (
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              className="input"
-            />
+
+          {period === "range" && (
+            <>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="input"
+              />
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="input"
+              />
+            </>
           )}
         </div>
       </div>
@@ -294,7 +317,9 @@ const calculateAveragePerDay = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Spent</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Total Spent
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 ₹{stats.totalSpent.toFixed(2)}
               </p>
@@ -313,7 +338,9 @@ const calculateAveragePerDay = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Expenses</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Total Expenses
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.totalExpenses}
               </p>
@@ -332,10 +359,11 @@ const calculateAveragePerDay = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Average Expense</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Average Expense
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 ₹{calculateAveragePerDay().toFixed(2)}
-
               </p>
             </div>
             <div className="w-12 h-12 bg-warning-100 dark:bg-warning-900 rounded-lg flex items-center justify-center">
@@ -352,7 +380,9 @@ const calculateAveragePerDay = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Daily Target</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Daily Target
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 ₹{insights.dailyTarget.toFixed(2)}
               </p>
@@ -373,7 +403,9 @@ const calculateAveragePerDay = () => {
           className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-6 shadow-sm border border-gray-200/50 dark:border-gray-700/50"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Monthly Savings / Overspending</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Monthly Savings / Overspending
+            </h2>
             <input
               type="month"
               value={selectedMonth}
@@ -384,18 +416,28 @@ const calculateAveragePerDay = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-gray-600 dark:text-gray-300">Budget</p>
-              <p className="text-gray-900 dark:text-white font-semibold">₹{Number(budgetInfo.monthlyLimit || 0).toFixed(2)}</p>
+              <p className="text-gray-900 dark:text-white font-semibold">
+                ₹{Number(budgetInfo.monthlyLimit || 0).toFixed(2)}
+              </p>
             </div>
             <div>
-              <p className="text-gray-600 dark:text-gray-300">Spent ({selectedMonth})</p>
-              <p className="text-gray-900 dark:text-white font-semibold">₹{Number(monthlySummary.spent || 0).toFixed(2)}</p>
+              <p className="text-gray-600 dark:text-gray-300">
+                Spent ({selectedMonth})
+              </p>
+              <p className="text-gray-900 dark:text-white font-semibold">
+                ₹{Number(monthlySummary.spent || 0).toFixed(2)}
+              </p>
             </div>
             <div>
               <p className="text-gray-600 dark:text-gray-300">Result</p>
               {monthlySummary.delta >= 0 ? (
-                <p className="font-semibold text-success-600 dark:text-success-400">Saved ₹{Math.abs(monthlySummary.delta).toFixed(2)}</p>
+                <p className="font-semibold text-success-600 dark:text-success-400">
+                  Saved ₹{Math.abs(monthlySummary.delta).toFixed(2)}
+                </p>
               ) : (
-                <p className="font-semibold text-danger-600 dark:text-danger-400">Exceeded by -₹{Math.abs(monthlySummary.delta).toFixed(2)}</p>
+                <p className="font-semibold text-danger-600 dark:text-danger-400">
+                  Exceeded by -₹{Math.abs(monthlySummary.delta).toFixed(2)}
+                </p>
               )}
             </div>
           </div>
@@ -417,7 +459,7 @@ const calculateAveragePerDay = () => {
               Spending by Category
             </h2>
           </div>
-          
+
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <RechartsPieChart>
@@ -427,7 +469,9 @@ const calculateAveragePerDay = () => {
                   cy="50%"
                   outerRadius={80}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                 >
                   {prepareCategoryData().map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -452,7 +496,7 @@ const calculateAveragePerDay = () => {
               Spending by Food Court
             </h2>
           </div>
-          
+
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={prepareFoodCourtData()}>
@@ -477,26 +521,36 @@ const calculateAveragePerDay = () => {
         <div className="flex items-center space-x-2 mb-6">
           <TrendingUp className="w-5 h-5 text-primary-600" />
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {period === 'today' ? 'Today\'s Spending' : 
-             period === 'date' ? `Spending on ${format(new Date(selectedDate), 'MMM dd, yyyy')}` :
-             period === 'week' ? 'Weekly Spending Trend' :
-             period === 'month' ? 'Daily Spending Trend' :
-             'Yearly Spending Trend'}
+            {period === "today"
+              ? "Today's Spending"
+              : period === "date"
+              ? `Spending on ${format(new Date(selectedDate), "MMM dd, yyyy")}`
+              : period === "week"
+              ? "Weekly Spending Trend"
+              : period === "month"
+              ? "Daily Spending Trend"
+              : "Yearly Spending Trend"}
           </h2>
         </div>
-        
+
         <div className="h-64">
-          {(period === 'today' || period === 'date') && stats?.totalSpent === 0 ? (
+          {(period === "today" || period === "date") &&
+          stats?.totalSpent === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                  {period === 'today' ? 'No expenses recorded today' : 
-                   `No expenses recorded on ${format(new Date(selectedDate), 'MMM dd, yyyy')}`}
+                  {period === "today"
+                    ? "No expenses recorded today"
+                    : `No expenses recorded on ${format(
+                        new Date(selectedDate),
+                        "MMM dd, yyyy"
+                      )}`}
                 </p>
                 <p className="text-gray-400 dark:text-gray-500 text-sm">
-                  {period === 'today' ? 'Start tracking your expenses to see your spending patterns' :
-                   'Try selecting a different date or add some expenses for this day'}
+                  {period === "today"
+                    ? "Start tracking your expenses to see your spending patterns"
+                    : "Try selecting a different date or add some expenses for this day"}
                 </p>
               </div>
             </div>
@@ -507,12 +561,12 @@ const calculateAveragePerDay = () => {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip content={<CustomTooltip />} />
-                <Line 
-                  type="monotone" 
-                  dataKey="amount" 
-                  stroke="#3b82f6" 
+                <Line
+                  type="monotone"
+                  dataKey="amount"
+                  stroke="#3b82f6"
                   strokeWidth={2}
-                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                  dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -533,7 +587,7 @@ const calculateAveragePerDay = () => {
             Smart Insights & Recommendations
           </h2>
         </div>
-        
+
         <div className="space-y-4">
           {insights.recommendations.map((recommendation, index) => (
             <motion.div
@@ -542,20 +596,28 @@ const calculateAveragePerDay = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.8 + index * 0.1 }}
               className={`p-4 rounded-lg border-l-4 ${
-                recommendation.type === 'success' ? 'bg-success-50 border-success-500 dark:bg-success-900/20' :
-                recommendation.type === 'warning' ? 'bg-warning-50 border-warning-500 dark:bg-warning-900/20' :
-                recommendation.type === 'tip' ? 'bg-blue-50 border-blue-500 dark:bg-blue-900/20' :
-                'bg-gray-50 border-gray-500 dark:bg-gray-900/20'
+                recommendation.type === "success"
+                  ? "bg-success-50 border-success-500 dark:bg-success-900/20"
+                  : recommendation.type === "warning"
+                  ? "bg-warning-50 border-warning-500 dark:bg-warning-900/20"
+                  : recommendation.type === "tip"
+                  ? "bg-blue-50 border-blue-500 dark:bg-blue-900/20"
+                  : "bg-gray-50 border-gray-500 dark:bg-gray-900/20"
               }`}
             >
               <div className="flex items-start space-x-3">
-                <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                  recommendation.type === 'success' ? 'bg-success-500' :
-                  recommendation.type === 'warning' ? 'bg-warning-500' :
-                  recommendation.type === 'tip' ? 'bg-blue-500' :
-                  'bg-gray-500'
-                }`}>
-                  {recommendation.type === 'success' ? (
+                <div
+                  className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                    recommendation.type === "success"
+                      ? "bg-success-500"
+                      : recommendation.type === "warning"
+                      ? "bg-warning-500"
+                      : recommendation.type === "tip"
+                      ? "bg-blue-500"
+                      : "bg-gray-500"
+                  }`}
+                >
+                  {recommendation.type === "success" ? (
                     <CheckCircle className="w-4 h-4 text-white" />
                   ) : (
                     <AlertTriangle className="w-4 h-4 text-white" />
@@ -573,7 +635,7 @@ const calculateAveragePerDay = () => {
             </motion.div>
           ))}
         </div>
-        
+
         {/* Floating Chat Component */}
         <FloatingChat />
       </motion.div>
