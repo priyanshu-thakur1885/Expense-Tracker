@@ -3,9 +3,85 @@ const { authenticateToken } = require('../middleware/auth');
 const User = require('../models/User');
 const Budget = require('../models/Budget');
 const Expense = require('../models/Expense');
+const AIChatHistory = require('../models/AIChatHistory');
 const https = require('https');
 
 const router = express.Router();
+
+// Helper function to parse expense from natural language
+function parseExpenseFromMessage(message) {
+  const expensePatterns = [
+    // Pattern: "I had/bought [item] from [foodCourt] and it cost me [amount]"
+    /(?:I\s+(?:had|bought|purchased|spent|got))\s+(.+?)\s+(?:from|at)\s+(.+?)\s+(?:and\s+it\s+cost\s+(?:me)?|for|costing|cost\s+(?:me)?)\s*(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)/i,
+    // Pattern: "Add expense: [item] [amount] from [foodCourt]"
+    /(?:add|create|record)\s+(?:expense|spending)?:?\s*(.+?)\s+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(?:from|at)\s+(.+)/i,
+    // Pattern: "[item] [amount] from [foodCourt]"
+    /(.+?)\s+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(?:from|at)\s+(.+)/i,
+  ];
+
+  for (const pattern of expensePatterns) {
+    const match = message.match(pattern);
+    if (match) {
+      const item = match[1]?.trim();
+      const amount = parseFloat(match[2]);
+      const foodCourt = match[3]?.trim();
+
+      if (item && amount && foodCourt && !isNaN(amount)) {
+        // Try to detect category from item name
+        const itemLower = item.toLowerCase();
+        let category = 'other';
+        
+        if (itemLower.match(/\b(breakfast|coffee|tea|milk|bread|toast|paratha|idli|dosa)\b/)) {
+          category = 'breakfast';
+        } else if (itemLower.match(/\b(lunch|rice|dal|curry|thali|biryani|roti|naan)\b/)) {
+          category = 'lunch';
+        } else if (itemLower.match(/\b(dinner|pizza|burger|pasta|noodles|chinese)\b/)) {
+          category = 'dinner';
+        } else if (itemLower.match(/\b(snack|samosa|pakora|chips|biscuit|cookie)\b/)) {
+          category = 'snacks';
+        } else if (itemLower.match(/\b(drink|juice|cola|pepsi|coke|water|soda)\b/)) {
+          category = 'drinks';
+        } else if (itemLower.match(/\b(grocery|vegetable|fruit|milk|bread|egg)\b/)) {
+          category = 'groceries';
+        }
+
+        return { item, amount, foodCourt, category };
+      }
+    }
+  }
+
+  return null;
+}
+
+// Helper function to actually add an expense
+async function addExpense(userId, expenseData) {
+  try {
+    const expense = new Expense({
+      userId,
+      item: expenseData.item,
+      amount: expenseData.amount,
+      category: expenseData.category || 'other',
+      foodCourt: expenseData.foodCourt,
+      description: expenseData.description || '',
+      tags: expenseData.tags || [],
+      date: expenseData.date ? new Date(expenseData.date) : new Date(),
+    });
+
+    await expense.save();
+
+    // Update budget
+    await Budget.findOneAndUpdate(
+      { userId },
+      { $inc: { currentSpent: expenseData.amount } },
+      { upsert: true }
+    );
+
+    return { success: true, expense };
+  } catch (error) {
+    console.error('Error adding expense:', error);
+    throw error;
+  }
+}
 
 // Helper function to get user context data
 async function getUserContext(userId) {
@@ -96,7 +172,28 @@ router.post('/chat', authenticateToken, async (req, res) => {
       });
     }
 
-    // Get user context
+    const userMessage = message.trim().toLowerCase();
+    let expenseAdded = null;
+
+    // Check if user wants to add an expense
+    if (userMessage.includes('add') || userMessage.includes('expense') || 
+        userMessage.includes('spent') || userMessage.includes('bought') ||
+        userMessage.includes('had') || userMessage.includes('purchased')) {
+      
+      const expenseData = parseExpenseFromMessage(message);
+      if (expenseData) {
+        try {
+          const result = await addExpense(req.user._id, expenseData);
+          expenseAdded = result.expense;
+          console.log('✅ Expense added via AI:', expenseAdded);
+        } catch (error) {
+          console.error('❌ Error adding expense:', error);
+          // Continue to AI response - let AI explain the error
+        }
+      }
+    }
+
+    // Get user context (refresh to get updated data if expense was added)
     const userContext = await getUserContext(req.user._id);
     
     if (!userContext) {
@@ -106,38 +203,74 @@ router.post('/chat', authenticateToken, async (req, res) => {
       });
     }
 
-    // Prepare context for AI
-    const contextPrompt = `You are a helpful AI assistant for an expense tracking app. The user's profile information:
+    // Prepare context for AI - make it conversational and natural
+    let expenseNote = '';
+    if (expenseAdded) {
+      expenseNote = `\nIMPORTANT: The user just added an expense: ${expenseAdded.item} for ${userContext.user.currency} ${expenseAdded.amount} from ${expenseAdded.foodCourt}. Just confirm it briefly like "Done! Added [item] for [amount]." Don't give unsolicited budget updates unless they ask.`;
+    }
 
-User Profile:
-- Name: ${userContext.user.name}
-- Currency: ${userContext.user.currency}
+    const contextPrompt = `You are a friendly, conversational AI assistant helping ${userContext.user.name} manage their expenses. 
 
-Budget Information:
+IMPORTANT: Be natural, conversational, and respond like a helpful friend - NOT like a robot reading a report. Don't just list data. Have a real conversation!
+${expenseNote}
+
+Here's ${userContext.user.name}'s expense data (use this naturally in conversation, don't just dump it):
+
 ${userContext.budget ? `
-- Monthly Budget: ${userContext.user.currency} ${userContext.budget.monthlyLimit}
-- Current Spent: ${userContext.user.currency} ${userContext.budget.currentSpent}
-- Remaining Budget: ${userContext.user.currency} ${userContext.budget.remainingBudget}
-- Spending Percentage: ${userContext.budget.spendingPercentage.toFixed(1)}%
-- Budget Status: ${userContext.budget.status}
+Budget: ${userContext.user.currency} ${userContext.budget.monthlyLimit} per month
+Spent so far: ${userContext.user.currency} ${userContext.budget.currentSpent}
+Remaining: ${userContext.user.currency} ${userContext.budget.remainingBudget}
+Status: ${userContext.budget.status === 'safe' ? 'doing well' : userContext.budget.status === 'warning' ? 'getting close to limit' : userContext.budget.status === 'danger' ? 'almost at limit' : 'over budget'}
 ` : 'No budget set yet.'}
 
-Expense Statistics:
-- Total Expenses: ${userContext.expenses.total}
-- Total Spent: ${userContext.user.currency} ${userContext.expenses.totalSpent}
-- Category Breakdown: ${JSON.stringify(userContext.expenses.categoryBreakdown)}
+${userContext.expenses.total > 0 ? `
+Total expenses: ${userContext.expenses.total}
+Top spending categories: ${Object.entries(userContext.expenses.categoryBreakdown)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 3)
+  .map(([cat, amount]) => `${cat} (${userContext.user.currency} ${amount})`)
+  .join(', ')}
 
-Recent Expenses:
-${userContext.expenses.recent.length > 0 
-  ? userContext.expenses.recent.map(exp => 
-      `- ${exp.item} (${exp.category}) at ${exp.foodCourt}: ${userContext.user.currency} ${exp.amount} on ${new Date(exp.date).toLocaleDateString()}`
-    ).join('\n')
-  : 'No recent expenses.'}
+Recent expenses:
+${userContext.expenses.recent.slice(0, 5).map(exp => 
+  `${exp.item} - ${userContext.user.currency} ${exp.amount} (${exp.category})`
+).join('\n')}
+` : 'No expenses recorded yet.'}
 
-Answer the user's question based on their profile and expense data. Be friendly, helpful, and provide specific insights based on their actual data. Keep responses concise and actionable.`;
+Guidelines:
+- Match the user's energy and tone - if they're brief, be brief. If they're casual, be casual.
+- If they say "ok", "thanks", "cool" - just say "You're welcome!" or "Anytime!" or similar. ONE sentence max.
+- Only mention budget/expense data if they ASK about it. Don't volunteer it.
+- Answer what they actually asked, nothing more.
+- Be conversational, like texting a friend - not a business report.
+- Keep it short unless they ask for details.`;
 
     // Call AI API (Google Gemini, Groq, or Hugging Face)
+    const startTime = Date.now();
+    const aiProvider = process.env.AI_PROVIDER || 'gemini';
     const aiResponse = await callAIAPI(message, contextPrompt);
+    const responseTime = Date.now() - startTime;
+
+    // Save chat history to database
+    try {
+      const chatHistory = new AIChatHistory({
+        userId: req.user._id,
+        userMessage: message,
+        aiResponse: aiResponse,
+        expenseAdded: !!expenseAdded,
+        expenseId: expenseAdded ? expenseAdded._id : null,
+        metadata: {
+          aiProvider: aiProvider,
+          responseTime: responseTime
+        }
+      });
+      
+      await chatHistory.save();
+      console.log('✅ Chat history saved:', chatHistory._id);
+    } catch (error) {
+      // Don't fail the request if history saving fails
+      console.error('❌ Error saving chat history:', error);
+    }
 
     res.json({
       success: true,
@@ -166,6 +299,81 @@ Answer the user's question based on their profile and expense data. Be friendly,
       success: false, 
       message: errorMessage,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Get chat history for the authenticated user
+router.get('/history', authenticateToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const chatHistory = await AIChatHistory.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(skip)
+      .select('userMessage aiResponse expenseAdded expenseId metadata createdAt')
+      .populate('expenseId', 'item amount category foodCourt');
+
+    const total = await AIChatHistory.countDocuments({ userId: req.user._id });
+
+    res.json({
+      success: true,
+      chatHistory,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching chat history'
+    });
+  }
+});
+
+// Get chat statistics for the authenticated user
+router.get('/stats', authenticateToken, async (req, res) => {
+  try {
+    const totalChats = await AIChatHistory.countDocuments({ userId: req.user._id });
+    const expensesAdded = await AIChatHistory.countDocuments({ 
+      userId: req.user._id, 
+      expenseAdded: true 
+    });
+    
+    const avgResponseTime = await AIChatHistory.aggregate([
+      { $match: { userId: req.user._id } },
+      { $group: {
+        _id: null,
+        avgResponseTime: { $avg: '$metadata.responseTime' }
+      }}
+    ]);
+
+    const recentChats = await AIChatHistory.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('createdAt userMessage')
+      .lean();
+
+    res.json({
+      success: true,
+      stats: {
+        totalChats,
+        expensesAdded,
+        avgResponseTime: avgResponseTime[0]?.avgResponseTime || 0,
+        recentChats
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching chat stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching chat statistics'
     });
   }
 });
@@ -199,7 +407,8 @@ async function callGeminiAPI(userMessage, contextPrompt) {
     throw new Error('GEMINI_API_KEY not configured. Get a free API key from https://makersuite.google.com/app/apikey');
   }
 
-  const fullPrompt = `${contextPrompt}\n\nUser Question: ${userMessage}\n\nAssistant Response:`;
+  // More conversational format - just context and user message
+  const fullPrompt = `${contextPrompt}\n\nUser: ${userMessage}\n\nYou:`;
 
   const requestBody = {
     contents: [{
@@ -476,7 +685,8 @@ async function callHuggingFaceAPI(userMessage, contextPrompt) {
     throw new Error('HUGGINGFACE_API_KEY not configured. Get a free API key from https://huggingface.co/settings/tokens');
   }
 
-  const fullPrompt = `${contextPrompt}\n\nUser Question: ${userMessage}\n\nAssistant Response:`;
+  // More conversational format - just context and user message
+  const fullPrompt = `${contextPrompt}\n\nUser: ${userMessage}\n\nYou:`;
 
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
