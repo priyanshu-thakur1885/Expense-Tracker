@@ -62,6 +62,28 @@ async function getUserContext(userId) {
   }
 }
 
+// Debug endpoint to check AI configuration (development only)
+router.get('/config', authenticateToken, (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ message: 'Not available in production' });
+  }
+  
+  const aiProvider = process.env.AI_PROVIDER || 'gemini';
+  const hasApiKey = !!process.env.GEMINI_API_KEY;
+  const apiKeyLength = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0;
+  const apiKeyPreview = process.env.GEMINI_API_KEY 
+    ? `${process.env.GEMINI_API_KEY.substring(0, 10)}...${process.env.GEMINI_API_KEY.substring(apiKeyLength - 4)}`
+    : 'Not set';
+  
+  res.json({
+    aiProvider,
+    hasApiKey,
+    apiKeyLength,
+    apiKeyPreview,
+    message: hasApiKey ? 'API key is configured' : 'API key is missing'
+  });
+});
+
 // AI Chat endpoint
 router.post('/chat', authenticateToken, async (req, res) => {
   try {
@@ -123,10 +145,26 @@ Answer the user's question based on their profile and expense data. Be friendly,
     });
 
   } catch (error) {
-    console.error('AI chat error:', error);
+    console.error('❌ AI chat error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error message:', error.message);
+    
+    // Provide more helpful error messages
+    let errorMessage = 'AI service is temporarily unavailable. Please try again later.';
+    
+    if (error.message.includes('GEMINI_API_KEY not configured')) {
+      errorMessage = 'AI service is not configured. Please contact support.';
+    } else if (error.message.includes('API key')) {
+      errorMessage = 'Invalid API key. Please check the configuration.';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = 'AI service request timed out. Please try again.';
+    } else if (error.message.includes('network') || error.message.includes('ECONNREFUSED')) {
+      errorMessage = 'Unable to connect to AI service. Please check your internet connection.';
+    }
+    
     res.status(500).json({ 
       success: false, 
-      message: 'Error processing AI request',
+      message: errorMessage,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -165,23 +203,27 @@ async function callGeminiAPI(userMessage, contextPrompt) {
 
   // Use Node's https module for compatibility
   return new Promise((resolve, reject) => {
-    const data = JSON.stringify({
+    const requestBody = {
       contents: [{
         parts: [{
           text: fullPrompt
         }]
       }]
-    });
+    };
+
+    const data = JSON.stringify(requestBody);
 
     const options = {
       hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+      path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': data.length
+        'Content-Length': Buffer.byteLength(data)
       }
     };
+
+    console.log('🔵 Calling Gemini API with endpoint:', options.path.substring(0, 50) + '...');
 
     const req = https.request(options, (res) => {
       let responseData = '';
@@ -191,23 +233,62 @@ async function callGeminiAPI(userMessage, contextPrompt) {
       });
 
       res.on('end', () => {
+        console.log('🔵 Gemini API response status:', res.statusCode);
+        
         if (res.statusCode !== 200) {
-          reject(new Error(`Gemini API error (${res.statusCode}): ${responseData}`));
+          console.error('❌ Gemini API error response:', responseData);
+          let errorMessage = `Gemini API error (${res.statusCode})`;
+          
+          try {
+            const errorData = JSON.parse(responseData);
+            if (errorData.error && errorData.error.message) {
+              errorMessage = errorData.error.message;
+            } else {
+              errorMessage = responseData.substring(0, 200);
+            }
+          } catch (e) {
+            errorMessage = responseData.substring(0, 200);
+          }
+          
+          reject(new Error(errorMessage));
           return;
         }
 
         try {
           const jsonData = JSON.parse(responseData);
-          const response = jsonData.candidates[0]?.content?.parts[0]?.text || 'Sorry, I could not generate a response.';
+          console.log('✅ Gemini API response parsed successfully');
+          
+          if (!jsonData.candidates || jsonData.candidates.length === 0) {
+            console.error('❌ No candidates in Gemini response:', jsonData);
+            reject(new Error('No response generated from Gemini API'));
+            return;
+          }
+
+          const response = jsonData.candidates[0]?.content?.parts[0]?.text;
+          
+          if (!response) {
+            console.error('❌ No text in Gemini response:', jsonData);
+            reject(new Error('Empty response from Gemini API'));
+            return;
+          }
+          
           resolve(response);
         } catch (error) {
+          console.error('❌ Failed to parse Gemini response:', error);
+          console.error('❌ Response data:', responseData.substring(0, 500));
           reject(new Error(`Failed to parse Gemini response: ${error.message}`));
         }
       });
     });
 
     req.on('error', (error) => {
+      console.error('❌ Gemini API request error:', error);
       reject(new Error(`Gemini API request failed: ${error.message}`));
+    });
+
+    req.setTimeout(30000, () => {
+      req.destroy();
+      reject(new Error('Gemini API request timeout'));
     });
 
     req.write(data);
