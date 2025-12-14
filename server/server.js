@@ -18,6 +18,7 @@
   const adminRoutes = require('./routes/admin');
   const bugReportRoutes = require('./routes/bugReport');
   const paymentRoutes = require('./routes/payment');
+  const aiRoutes = require('./routes/ai');
 
   // Import passport configuration
   require('./config/passport');
@@ -145,9 +146,7 @@ app.use('/uploads', express.static('uploads'));
   app.use('/api/admin', adminRoutes);
   app.use('/api/bugreport', bugReportRoutes);
   app.use('/api/payment', paymentRoutes);
-
-
-  // AI routes removed
+  app.use('/api/ai', aiRoutes);
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {
