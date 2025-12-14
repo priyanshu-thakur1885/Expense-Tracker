@@ -14,29 +14,17 @@ const Header = ({
 
   return (
     <header className="shadow-sm border-b border-gray-200 dark:border-gray-700">
-      <div
-        className={`px-6 py-4 flex items-center ${
-          isSidebarOpen ? "gap-4" : "relative"
-        } min-h-[56px]`}
-      >
+      <div className="px-6 py-4 flex items-center gap-4 min-h-[56px]">
         {/* Hamburger - positioned fixed over sidebar when open */}
         <button
           onClick={toggleSidebar}
-          className={`p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${
-            isSidebarOpen ? "fixed left-4 top-4 z-50" : ""
-          }`}
+          className={`p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700`}
         >
           <Menu size={22} />
         </button>
 
         {/* Search - centered when sidebar closed, normal when open */}
-        <div
-          className={`relative ${
-            !isSidebarOpen
-              ? "absolute left-1/2 transform -translate-x-1/2"
-              : "flex-1 max-w-2xl"
-          }`}
-        >
+        <div className={"relative flex-1 max-w-2xl"}>
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           <input
             type="text"

@@ -1,15 +1,38 @@
-import React from 'react';
+import React from "react";
 
-const LoadingSpinner = ({ size = 'md', className = '' }) => {
-  const sizeClasses = {
-    sm: 'h-4 w-4',
-    md: 'h-6 w-6',
-    lg: 'h-8 w-8',
-    xl: 'h-12 w-12'
+const LoadingSpinner = ({ size = "md", className = "" }) => {
+  const sizeMap = {
+    sm: "w-4 h-4",
+    md: "w-6 h-6",
+    lg: "w-8 h-8",
+    xl: "w-12 h-12",
   };
 
   return (
-    <div className={`loading-spinner ${sizeClasses[size]} ${className}`} />
+    <div className={`relative ${sizeMap[size]} ${className}`}>
+      {/* Outer ring */}
+      <div
+        className="
+        absolute inset-0
+        rounded-full
+        border-2 border-transparent
+        border-t-primary-500 border-r-primary-400
+        animate-spin
+      "
+      />
+
+      {/* Inner glowing ring */}
+      <div
+        className="
+        absolute inset-1
+        rounded-full
+        border-2 border-transparent
+        border-b-primary-400 border-l-primary-300
+        animate-spin-reverse
+        blur-[0.5px]
+      "
+      />
+    </div>
   );
 };
 
