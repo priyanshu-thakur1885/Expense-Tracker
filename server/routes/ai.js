@@ -18,6 +18,10 @@ let modelCache = {
 // Helper function to parse expense from natural language
 function parseExpenseFromMessage(message) {
   const expensePatterns = [
+    // Pattern: "add an expense, food item- pizza, price - 100rs, food court - CSE food court"
+    /(?:add|create|record)\s+(?:an\s+)?expense[,\s]+(?:food\s+)?item[-\s:]+(.+?)[,\s]+(?:price|cost|amount)[-\s:]+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)[,\s]+(?:food\s+)?court[-\s:]+(.+?)(?:$|,)/i,
+    // Pattern: "food item- pizza, price - 100rs, food court - CSE food court"
+    /(?:food\s+)?item[-\s:]+(.+?)[,\s]+(?:price|cost|amount)[-\s:]+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)[,\s]+(?:food\s+)?court[-\s:]+(.+?)(?:$|,)/i,
     // Pattern: "I had/bought [item] from [foodCourt] and it cost me [amount]"
     /(?:I\s+(?:had|bought|purchased|spent|got))\s+(.+?)\s+(?:from|at)\s+(.+?)\s+(?:and\s+it\s+cost\s+(?:me)?|for|costing|cost\s+(?:me)?)\s*(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)/i,
     // Pattern: "Add expense: [item] [amount] from [foodCourt]"
@@ -29,11 +33,17 @@ function parseExpenseFromMessage(message) {
   for (const pattern of expensePatterns) {
     const match = message.match(pattern);
     if (match) {
-      const item = match[1]?.trim();
-      const amount = parseFloat(match[2]);
-      const foodCourt = match[3]?.trim();
+      // Pattern order: item, amount, foodCourt (for most patterns)
+      // But some patterns might have different order, so we check
+      let item, amount, foodCourt;
+      
+      if (match.length >= 4) {
+        item = match[1]?.trim();
+        amount = parseFloat(match[2]);
+        foodCourt = match[3]?.trim();
+      }
 
-      if (item && amount && foodCourt && !isNaN(amount)) {
+      if (item && amount && foodCourt && !isNaN(amount) && amount > 0) {
         // Try to detect category from item name
         const itemLower = item.toLowerCase();
         let category = 'other';
@@ -185,10 +195,12 @@ router.post('/chat', authenticateToken, async (req, res) => {
     // Check if user wants to add an expense
     if (userMessage.includes('add') || userMessage.includes('expense') || 
         userMessage.includes('spent') || userMessage.includes('bought') ||
-        userMessage.includes('had') || userMessage.includes('purchased')) {
+        userMessage.includes('had') || userMessage.includes('purchased') ||
+        userMessage.includes('food item') || userMessage.includes('price')) {
       
       const expenseData = parseExpenseFromMessage(message);
       if (expenseData) {
+        console.log('📝 Parsed expense data:', expenseData);
         try {
           const result = await addExpense(req.user._id, expenseData);
           expenseAdded = result.expense;
@@ -197,6 +209,8 @@ router.post('/chat', authenticateToken, async (req, res) => {
           console.error('❌ Error adding expense:', error);
           // Continue to AI response - let AI explain the error
         }
+      } else {
+        console.log('⚠️ Could not parse expense from message:', message);
       }
     }
 
