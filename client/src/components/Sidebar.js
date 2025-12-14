@@ -107,8 +107,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         </div>
       </div>
 
-      {/* Overlay */}
-      {isOpen && <div className="fixed inset-0 z-30" onClick={closeSidebar} />}
+      {/* Overlay removed - sidebar only closes on hamburger click */}
 
       {/* Bug Report Modal */}
       <BugReport

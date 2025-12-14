@@ -19,10 +19,12 @@ const Header = ({
           isSidebarOpen ? "gap-4" : "relative"
         } min-h-[56px]`}
       >
-        {/* Hamburger - always on left */}
+        {/* Hamburger - positioned fixed over sidebar when open */}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+          className={`p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${
+            isSidebarOpen ? "fixed left-4 top-4 z-50" : ""
+          }`}
         >
           <Menu size={22} />
         </button>
