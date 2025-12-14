@@ -8,6 +8,13 @@ const https = require('https');
 
 const router = express.Router();
 
+// Cache for available models (refresh every 1 hour)
+let modelCache = {
+  model: null,
+  timestamp: null,
+  ttl: 3600000 // 1 hour in milliseconds
+};
+
 // Helper function to parse expense from natural language
 function parseExpenseFromMessage(message) {
   const expensePatterns = [
@@ -285,7 +292,10 @@ Guidelines:
     // Provide more helpful error messages
     let errorMessage = 'AI service is temporarily unavailable. Please try again later.';
     
-    if (error.message.includes('GEMINI_API_KEY not configured')) {
+    if (error.message.includes('quota exceeded') || error.message.includes('Quota exceeded')) {
+      // Use the detailed quota error message from the retry function
+      errorMessage = error.message;
+    } else if (error.message.includes('GEMINI_API_KEY not configured')) {
       errorMessage = 'AI service is not configured. Please contact support.';
     } else if (error.message.includes('API key')) {
       errorMessage = 'Invalid API key. Please check the configuration.';
@@ -420,13 +430,30 @@ async function callGeminiAPI(userMessage, contextPrompt) {
 
   const data = JSON.stringify(requestBody);
 
-  // First, try to get available models
+  // First, try to get available models (use cache if available)
   let availableModel = null;
-  try {
-    availableModel = await getAvailableGeminiModel(apiKey);
-    console.log(`✅ Found available model: ${availableModel}`);
-  } catch (error) {
-    console.log(`⚠️ Could not list models: ${error.message}`);
+  
+  // Check cache first
+  if (modelCache.model && modelCache.timestamp && 
+      (Date.now() - modelCache.timestamp) < modelCache.ttl) {
+    availableModel = modelCache.model;
+    console.log(`✅ Using cached model: ${availableModel}`);
+  } else {
+    // Cache expired or doesn't exist, fetch fresh
+    try {
+      availableModel = await getAvailableGeminiModel(apiKey);
+      // Update cache
+      modelCache.model = availableModel;
+      modelCache.timestamp = Date.now();
+      console.log(`✅ Found available model: ${availableModel}`);
+    } catch (error) {
+      console.log(`⚠️ Could not list models: ${error.message}`);
+      // If cache exists but expired, use it anyway as fallback
+      if (modelCache.model) {
+        availableModel = modelCache.model;
+        console.log(`⚠️ Using stale cached model: ${availableModel}`);
+      }
+    }
   }
 
   // Try endpoints - use discovered model first, then fallbacks
@@ -445,9 +472,13 @@ async function callGeminiAPI(userMessage, contextPrompt) {
 
   for (const endpoint of endpoints) {
     try {
-      const result = await tryGeminiEndpoint(apiKey, data, endpoint.version, endpoint.model);
+      const result = await tryGeminiEndpointWithRetry(apiKey, data, endpoint.version, endpoint.model);
       return result;
     } catch (error) {
+      // If it's a quota error, don't try other endpoints
+      if (error.message.includes('quota') || error.message.includes('Quota exceeded')) {
+        throw error;
+      }
       console.log(`⚠️ Failed with ${endpoint.version}/${endpoint.model}: ${error.message}`);
       // Continue to next endpoint
       continue;
@@ -456,6 +487,33 @@ async function callGeminiAPI(userMessage, contextPrompt) {
 
   // If all endpoints failed
   throw new Error('All Gemini API endpoints failed. Please verify your API key is valid and has access to Gemini models.');
+}
+
+// Helper function to retry with exponential backoff for quota errors
+async function tryGeminiEndpointWithRetry(apiKey, data, version, model, maxRetries = 1) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await tryGeminiEndpoint(apiKey, data, version, model);
+    } catch (error) {
+      // Check if it's a quota error with retry time
+      if (error.quotaExceeded || error.message.includes('quota') || error.message.includes('Quota exceeded')) {
+        const retrySeconds = error.retryAfter || 15;
+        
+        if (attempt < maxRetries) {
+          const waitTime = Math.min(retrySeconds * 1000, 30000); // Max 30 seconds
+          console.log(`⏳ Quota exceeded, waiting ${waitTime/1000}s before retry (attempt ${attempt + 1}/${maxRetries + 1})...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        } else {
+          // Max retries reached - provide helpful error message
+          const waitTime = Math.ceil(retrySeconds);
+          throw new Error(`API quota exceeded. Free tier has a limit of 20 requests. Please wait ${waitTime} seconds and try again, or consider upgrading your API plan at https://ai.google.dev/pricing`);
+        }
+      }
+      // Not a quota error, throw immediately
+      throw error;
+    }
+  }
 }
 
 // Helper function to get available Gemini models
@@ -558,17 +616,33 @@ function tryGeminiEndpoint(apiKey, data, version, model) {
       res.on('end', () => {
         if (res.statusCode !== 200) {
           let errorMessage = `Gemini API error (${res.statusCode})`;
+          let isQuotaError = false;
+          let retryAfter = null;
           
           try {
             const errorData = JSON.parse(responseData);
             if (errorData.error && errorData.error.message) {
               errorMessage = errorData.error.message;
+              // Check if it's a quota error
+              if (errorMessage.includes('quota') || errorMessage.includes('Quota exceeded')) {
+                isQuotaError = true;
+                // Extract retry time from message
+                const retryMatch = errorMessage.match(/retry in ([\d.]+)s/i);
+                if (retryMatch) {
+                  retryAfter = parseFloat(retryMatch[1]);
+                }
+              }
             }
           } catch (e) {
             // Not JSON, use raw response
           }
           
-          reject(new Error(errorMessage));
+          const error = new Error(errorMessage);
+          if (isQuotaError) {
+            error.quotaExceeded = true;
+            error.retryAfter = retryAfter;
+          }
+          reject(error);
           return;
         }
 
