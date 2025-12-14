@@ -211,13 +211,28 @@ async function callGeminiAPI(userMessage, contextPrompt) {
 
   const data = JSON.stringify(requestBody);
 
-  // Try multiple endpoints/models in order
-  const endpoints = [
-    { version: 'v1', model: 'gemini-1.5-flash' },
-    { version: 'v1', model: 'gemini-1.5-pro' },
-    { version: 'v1beta', model: 'gemini-pro' },
-    { version: 'v1beta', model: 'gemini-1.5-flash' }
-  ];
+  // First, try to get available models
+  let availableModel = null;
+  try {
+    availableModel = await getAvailableGeminiModel(apiKey);
+    console.log(`✅ Found available model: ${availableModel}`);
+  } catch (error) {
+    console.log(`⚠️ Could not list models: ${error.message}`);
+  }
+
+  // Try endpoints - use discovered model first, then fallbacks
+  // Note: API keys from aistudio.google.com might need Generative Language API enabled
+  const endpoints = availableModel 
+    ? [{ version: 'v1beta', model: availableModel }]
+    : [
+        // Try common model names that work with aistudio.google.com API keys
+        { version: 'v1beta', model: 'gemini-pro' },
+        { version: 'v1beta', model: 'gemini-1.5-flash' },
+        { version: 'v1beta', model: 'gemini-1.5-pro' },
+        { version: 'v1', model: 'gemini-1.5-flash' },
+        { version: 'v1', model: 'gemini-1.5-pro' },
+        { version: 'v1', model: 'gemini-pro' }
+      ];
 
   for (const endpoint of endpoints) {
     try {
@@ -231,7 +246,82 @@ async function callGeminiAPI(userMessage, contextPrompt) {
   }
 
   // If all endpoints failed
-  throw new Error('All Gemini API endpoints failed. Please check your API key and try again.');
+  throw new Error('All Gemini API endpoints failed. Please verify your API key is valid and has access to Gemini models.');
+}
+
+// Helper function to get available Gemini models
+function getAvailableGeminiModel(apiKey) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models?key=${apiKey}`,
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    };
+
+    console.log('🔍 Listing available Gemini models...');
+
+    const req = https.request(options, (res) => {
+      let responseData = '';
+
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          const errorMsg = responseData ? JSON.parse(responseData).error?.message || `Status ${res.statusCode}` : `Status ${res.statusCode}`;
+          reject(new Error(`Failed to list models: ${errorMsg}`));
+          return;
+        }
+
+        try {
+          const jsonData = JSON.parse(responseData);
+          console.log('📋 Models response:', JSON.stringify(jsonData).substring(0, 500));
+          
+          if (jsonData.models && jsonData.models.length > 0) {
+            // Find a model that supports generateContent
+            const model = jsonData.models.find(m => 
+              m.supportedGenerationMethods && 
+              m.supportedGenerationMethods.includes('generateContent')
+            );
+            
+            if (model) {
+              // Extract just the model name (remove version prefix if any)
+              const modelName = model.name.split('/').pop();
+              console.log(`✅ Found model with generateContent: ${modelName}`);
+              console.log(`📋 All available models: ${jsonData.models.map(m => m.name.split('/').pop()).join(', ')}`);
+              resolve(modelName);
+            } else {
+              // If no model with generateContent, try the first model
+              const firstModel = jsonData.models[0];
+              const modelName = firstModel.name.split('/').pop();
+              console.log(`⚠️ No model with generateContent found, trying first model: ${modelName}`);
+              resolve(modelName);
+            }
+          } else {
+            reject(new Error('No models found in response'));
+          }
+        } catch (error) {
+          console.error('❌ Failed to parse models response:', responseData.substring(0, 200));
+          reject(new Error(`Failed to parse models response: ${error.message}`));
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      reject(new Error(`Failed to list models: ${error.message}`));
+    });
+
+    req.setTimeout(10000, () => {
+      req.destroy();
+      reject(new Error('List models request timeout'));
+    });
+
+    req.end();
+  });
 }
 
 // Helper function to try a specific Gemini endpoint
