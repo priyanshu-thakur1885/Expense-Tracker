@@ -19,15 +19,15 @@ let modelCache = {
 function parseExpenseFromMessage(message) {
   const expensePatterns = [
     // Pattern: "add an expense, food item- pizza, price - 100rs, food court - CSE food court"
-    /(?:add|create|record)\s+(?:an\s+)?expense[,\s]+(?:food\s+)?item[-\s:]+(.+?)[,\s]+(?:price|cost|amount)[-\s:]+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)[,\s]+(?:food\s+)?court[-\s:]+(.+?)(?:$|,)/i,
+    /(?:add|create|record)\s+(?:an\s+)?expense[,\s]+(?:food\s+)?item[-\s:]+(.+?)[,\s]+(?:price|cost|amount)[-\s:]+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)(?:\s*(?:rs|rupees|₹|inr))?[,\s]+(?:food\s+)?court[-\s:]+(.+?)(?:$|,)/i,
     // Pattern: "food item- pizza, price - 100rs, food court - CSE food court"
-    /(?:food\s+)?item[-\s:]+(.+?)[,\s]+(?:price|cost|amount)[-\s:]+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)[,\s]+(?:food\s+)?court[-\s:]+(.+?)(?:$|,)/i,
-    // Pattern: "I had/bought [item] from [foodCourt] and it cost me [amount]"
-    /(?:I\s+(?:had|bought|purchased|spent|got))\s+(.+?)\s+(?:from|at)\s+(.+?)\s+(?:and\s+it\s+cost\s+(?:me)?|for|costing|cost\s+(?:me)?)\s*(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)/i,
-    // Pattern: "Add expense: [item] [amount] from [foodCourt]"
-    /(?:add|create|record)\s+(?:expense|spending)?:?\s*(.+?)\s+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(?:from|at)\s+(.+)/i,
-    // Pattern: "[item] [amount] from [foodCourt]"
-    /(.+?)\s+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(?:from|at)\s+(.+)/i,
+    /(?:food\s+)?item[-\s:]+(.+?)[,\s]+(?:price|cost|amount)[-\s:]+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)(?:\s*(?:rs|rupees|₹|inr))?[,\s]+(?:food\s+)?court[-\s:]+(.+?)(?:$|,)/i,
+    // Pattern: "I had/bought [item] from [foodCourt] and it cost me [amount]" - handles currency before or after
+    /(?:I\s+(?:had|bought|purchased|spent|got))\s+(.+?)\s+(?:from|at)\s+(.+?)\s+(?:and\s+it\s+cost\s+(?:me)?|for|costing|cost\s+(?:me)?)\s*(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)(?:\s*(?:rs|rupees|₹|inr))?/i,
+    // Pattern: "Add expense: [item] [amount] from [foodCourt]" - handles currency before or after
+    /(?:add|create|record)\s+(?:expense|spending)?:?\s*(.+?)\s+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)(?:\s*(?:rs|rupees|₹|inr))?\s+(?:from|at)\s+(.+)/i,
+    // Pattern: "[item] [amount] from [foodCourt]" - handles currency before or after
+    /(.+?)\s+(?:rs|rupees|₹|inr)?\s*(\d+(?:\.\d+)?)(?:\s*(?:rs|rupees|₹|inr))?\s+(?:from|at)\s+(.+)/i,
   ];
 
   for (const pattern of expensePatterns) {
@@ -192,24 +192,50 @@ router.post('/chat', authenticateToken, async (req, res) => {
     const userMessage = message.trim().toLowerCase();
     let expenseAdded = null;
 
+    // Get recent chat history for context (last 5 messages)
+    const recentChatHistory = await AIChatHistory.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('userMessage aiResponse')
+      .lean();
+
     // Check if user wants to add an expense
-    if (userMessage.includes('add') || userMessage.includes('expense') || 
-        userMessage.includes('spent') || userMessage.includes('bought') ||
-        userMessage.includes('had') || userMessage.includes('purchased') ||
-        userMessage.includes('food item') || userMessage.includes('price')) {
-      
-      const expenseData = parseExpenseFromMessage(message);
-      if (expenseData) {
-        console.log('📝 Parsed expense data:', expenseData);
-        try {
-          const result = await addExpense(req.user._id, expenseData);
-          expenseAdded = result.expense;
-          console.log('✅ Expense added via AI:', expenseAdded);
-        } catch (error) {
-          console.error('❌ Error adding expense:', error);
-          // Continue to AI response - let AI explain the error
+    // First, try to parse from current message - be proactive, try parsing any message
+    let expenseData = parseExpenseFromMessage(message);
+    
+    // If current message is "add this expense" or similar, look in previous messages
+    if (!expenseData && (userMessage.includes('add this') || userMessage.includes('add that') || 
+        userMessage === 'add expense' || userMessage === 'add it' ||
+        (userMessage.includes('add') && (userMessage.includes('expense') || userMessage.includes('it'))))) {
+      // Look through recent chat history for expense details
+      for (const chat of recentChatHistory) {
+        expenseData = parseExpenseFromMessage(chat.userMessage);
+        if (expenseData) {
+          console.log('📝 Found expense in previous message:', chat.userMessage);
+          break;
         }
-      } else {
+      }
+    }
+    
+    // If we found expense data, add it immediately
+    if (expenseData) {
+      console.log('📝 Parsed expense data:', expenseData);
+      try {
+        const result = await addExpense(req.user._id, expenseData);
+        expenseAdded = result.expense;
+        console.log('✅ Expense added via AI:', expenseAdded);
+      } catch (error) {
+        console.error('❌ Error adding expense:', error);
+        // Continue to AI response - let AI explain the error
+      }
+    } else {
+      // Log if we couldn't parse but message seems expense-related
+      const seemsExpenseRelated = userMessage.includes('add') || userMessage.includes('expense') || 
+                                   userMessage.includes('spent') || userMessage.includes('bought') ||
+                                   userMessage.includes('had') || userMessage.includes('purchased') ||
+                                   userMessage.includes('food item') || userMessage.includes('price') ||
+                                   userMessage.includes('cost') || userMessage.includes('from') && /\d+/.test(userMessage);
+      if (seemsExpenseRelated) {
         console.log('⚠️ Could not parse expense from message:', message);
       }
     }
@@ -224,16 +250,51 @@ router.post('/chat', authenticateToken, async (req, res) => {
       });
     }
 
-    // Prepare context for AI - make it conversational and natural
-    let expenseNote = '';
+    // If expense was added, return direct confirmation instead of AI response
     if (expenseAdded) {
-      expenseNote = `\nIMPORTANT: The user just added an expense: ${expenseAdded.item} for ${userContext.user.currency} ${expenseAdded.amount} from ${expenseAdded.foodCourt}. Just confirm it briefly like "Done! Added [item] for [amount]." Don't give unsolicited budget updates unless they ask.`;
+      const confirmationMessage = `Done! ✅ Added ${expenseAdded.item} for ${userContext.user.currency} ${expenseAdded.amount} from ${expenseAdded.foodCourt}.`;
+      
+      // Save chat history
+      try {
+        const chatHistory = new AIChatHistory({
+          userId: req.user._id,
+          userMessage: message,
+          aiResponse: confirmationMessage,
+          expenseAdded: true,
+          expenseId: expenseAdded._id,
+          metadata: {
+            aiProvider: 'direct',
+            responseTime: 0
+          }
+        });
+        
+        await chatHistory.save();
+        console.log('✅ Chat history saved:', chatHistory._id);
+      } catch (error) {
+        console.error('❌ Error saving chat history:', error);
+      }
+      
+      return res.json({
+        success: true,
+        response: confirmationMessage
+      });
+    }
+
+    // Prepare context for AI - make it conversational and natural
+    // Include recent chat history for context
+    let chatContext = '';
+    if (recentChatHistory.length > 0) {
+      chatContext = '\n\nRecent conversation:\n' + recentChatHistory
+        .reverse()
+        .slice(0, 3)
+        .map(chat => `User: ${chat.userMessage}\nAssistant: ${chat.aiResponse}`)
+        .join('\n\n');
     }
 
     const contextPrompt = `You are a friendly, conversational AI assistant helping ${userContext.user.name} manage their expenses. 
 
 IMPORTANT: Be natural, conversational, and respond like a helpful friend - NOT like a robot reading a report. Don't just list data. Have a real conversation!
-${expenseNote}
+${chatContext}
 
 Here's ${userContext.user.name}'s expense data (use this naturally in conversation, don't just dump it):
 
