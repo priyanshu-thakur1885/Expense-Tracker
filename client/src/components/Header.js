@@ -16,18 +16,12 @@ const Header = ({
     <header className="shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="px-6 py-4 flex items-center gap-4 min-h-[56px]">
         {/* Hamburger - positioned fixed over sidebar when open */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <Menu size={22} />
-          </button>
-
-          <span className="text-lg font-bold whitespace-nowrap">
-            Expense Tracker
-          </span>
-        </div>
+        <button
+          onClick={toggleSidebar}
+          className={`p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700`}
+        >
+          <Menu size={22} />
+        </button>
 
         {/* Search - centered when sidebar closed, normal when open */}
         <div className={"relative flex-1 max-w-2xl"}>
