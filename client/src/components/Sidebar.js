@@ -108,7 +108,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
       </div>
 
       {/* Overlay */}
-      {isOpen && <div className="fixed inset-0 z-30 bg-black/50" onClick={closeSidebar} />}
+      {isOpen && <div className="fixed inset-0 z-30" onClick={closeSidebar} />}
 
       {/* Bug Report Modal */}
       <BugReport

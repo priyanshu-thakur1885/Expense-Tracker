@@ -28,7 +28,7 @@ const Layout = () => {
       }}
     >
       {hasCustomWallpaper && (
-        <div className="fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-[0.5px] pointer-events-none z-0" />
+        <div className="fixed inset-0 bg-black/10 dark:bg-black/20 backdrop-blur-[0.5px] pointer-events-none z-0" />
       )}
 
       <div className="relative z-10 flex">
