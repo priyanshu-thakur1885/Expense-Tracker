@@ -201,21 +201,45 @@ async function callGeminiAPI(userMessage, contextPrompt) {
 
   const fullPrompt = `${contextPrompt}\n\nUser Question: ${userMessage}\n\nAssistant Response:`;
 
-  // Use Node's https module for compatibility
-  return new Promise((resolve, reject) => {
-    const requestBody = {
-      contents: [{
-        parts: [{
-          text: fullPrompt
-        }]
+  const requestBody = {
+    contents: [{
+      parts: [{
+        text: fullPrompt
       }]
-    };
+    }]
+  };
 
-    const data = JSON.stringify(requestBody);
+  const data = JSON.stringify(requestBody);
 
+  // Try multiple endpoints/models in order
+  const endpoints = [
+    { version: 'v1', model: 'gemini-1.5-flash' },
+    { version: 'v1', model: 'gemini-1.5-pro' },
+    { version: 'v1beta', model: 'gemini-pro' },
+    { version: 'v1beta', model: 'gemini-1.5-flash' }
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const result = await tryGeminiEndpoint(apiKey, data, endpoint.version, endpoint.model);
+      return result;
+    } catch (error) {
+      console.log(`⚠️ Failed with ${endpoint.version}/${endpoint.model}: ${error.message}`);
+      // Continue to next endpoint
+      continue;
+    }
+  }
+
+  // If all endpoints failed
+  throw new Error('All Gemini API endpoints failed. Please check your API key and try again.');
+}
+
+// Helper function to try a specific Gemini endpoint
+function tryGeminiEndpoint(apiKey, data, version, model) {
+  return new Promise((resolve, reject) => {
     const options = {
       hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+      path: `/${version}/models/${model}:generateContent?key=${apiKey}`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -223,7 +247,7 @@ async function callGeminiAPI(userMessage, contextPrompt) {
       }
     };
 
-    console.log('🔵 Calling Gemini API with endpoint:', options.path.substring(0, 50) + '...');
+    console.log(`🔵 Trying Gemini API: ${version}/${model}`);
 
     const req = https.request(options, (res) => {
       let responseData = '';
@@ -233,21 +257,16 @@ async function callGeminiAPI(userMessage, contextPrompt) {
       });
 
       res.on('end', () => {
-        console.log('🔵 Gemini API response status:', res.statusCode);
-        
         if (res.statusCode !== 200) {
-          console.error('❌ Gemini API error response:', responseData);
           let errorMessage = `Gemini API error (${res.statusCode})`;
           
           try {
             const errorData = JSON.parse(responseData);
             if (errorData.error && errorData.error.message) {
               errorMessage = errorData.error.message;
-            } else {
-              errorMessage = responseData.substring(0, 200);
             }
           } catch (e) {
-            errorMessage = responseData.substring(0, 200);
+            // Not JSON, use raw response
           }
           
           reject(new Error(errorMessage));
@@ -256,10 +275,8 @@ async function callGeminiAPI(userMessage, contextPrompt) {
 
         try {
           const jsonData = JSON.parse(responseData);
-          console.log('✅ Gemini API response parsed successfully');
           
           if (!jsonData.candidates || jsonData.candidates.length === 0) {
-            console.error('❌ No candidates in Gemini response:', jsonData);
             reject(new Error('No response generated from Gemini API'));
             return;
           }
@@ -267,22 +284,19 @@ async function callGeminiAPI(userMessage, contextPrompt) {
           const response = jsonData.candidates[0]?.content?.parts[0]?.text;
           
           if (!response) {
-            console.error('❌ No text in Gemini response:', jsonData);
             reject(new Error('Empty response from Gemini API'));
             return;
           }
           
+          console.log(`✅ Success with ${version}/${model}`);
           resolve(response);
         } catch (error) {
-          console.error('❌ Failed to parse Gemini response:', error);
-          console.error('❌ Response data:', responseData.substring(0, 500));
           reject(new Error(`Failed to parse Gemini response: ${error.message}`));
         }
       });
     });
 
     req.on('error', (error) => {
-      console.error('❌ Gemini API request error:', error);
       reject(new Error(`Gemini API request failed: ${error.message}`));
     });
 
