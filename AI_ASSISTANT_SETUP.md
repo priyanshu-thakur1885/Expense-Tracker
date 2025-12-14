@@ -8,8 +8,22 @@ The AI Assistant uses your expense data (profile, budget, and expenses) to provi
 
 ## Free AI Provider Options
 
-### 1. Google Gemini (Recommended) ⭐
-- **Free Tier**: 60 requests per minute
+### 1. Groq API (Recommended) ⭐
+- **Free Tier**: 14,400 requests per day (much better than Gemini!)
+- **Speed**: Extremely fast (uses optimized models)
+- **Quality**: Excellent
+- **Setup**: Easy
+
+**Steps to get API key:**
+1. Visit https://console.groq.com/
+2. Sign up for a free account
+3. Go to API Keys section
+4. Create a new API key
+5. Add to your `.env` file as `GROQ_API_KEY`
+6. Set `AI_PROVIDER=groq` in your `.env` file
+
+### 2. Google Gemini
+- **Free Tier**: 20 requests per day (very limited!)
 - **Speed**: Fast
 - **Quality**: Excellent
 - **Setup**: Easiest
@@ -21,18 +35,7 @@ The AI Assistant uses your expense data (profile, budget, and expenses) to provi
 4. Copy the API key
 5. Add to your `.env` file as `GEMINI_API_KEY`
 
-### 2. Groq API
-- **Free Tier**: Very generous limits
-- **Speed**: Extremely fast (uses optimized models)
-- **Quality**: Good
-- **Setup**: Easy
-
-**Steps to get API key:**
-1. Visit https://console.groq.com/
-2. Sign up for a free account
-3. Go to API Keys section
-4. Create a new API key
-5. Add to your `.env` file as `GROQ_API_KEY`
+### 3. Hugging Face Inference API
 
 ### 3. Hugging Face Inference API
 - **Free Tier**: Limited but free

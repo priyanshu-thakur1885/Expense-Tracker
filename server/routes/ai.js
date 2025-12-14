@@ -254,7 +254,7 @@ Guidelines:
 
     // Call AI API (Google Gemini, Groq, or Hugging Face)
     const startTime = Date.now();
-    const aiProvider = process.env.AI_PROVIDER || 'gemini';
+    const aiProvider = process.env.AI_PROVIDER || 'groq'; // Default to groq for better free tier
     const aiResponse = await callAIAPI(message, contextPrompt);
     const responseTime = Date.now() - startTime;
 
@@ -390,7 +390,8 @@ router.get('/stats', authenticateToken, async (req, res) => {
 
 // AI API call function - supports multiple free APIs
 async function callAIAPI(userMessage, contextPrompt) {
-  const aiProvider = process.env.AI_PROVIDER || 'gemini'; // gemini, groq, or huggingface
+  // Default to groq for better free tier limits (gemini only has 20/day)
+  const aiProvider = process.env.AI_PROVIDER || 'groq'; // groq (recommended), gemini, or huggingface
 
   try {
     switch (aiProvider) {
