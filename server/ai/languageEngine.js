@@ -14,6 +14,10 @@ function templateResponse({ intent, patternId, actionResult, clarification }) {
   if (clarification) return clarification;
 
   switch (intent) {
+    case 'SET_ASSISTANT_NAME':
+      return actionResult?.assistantName
+        ? `Got it — call me ${actionResult.assistantName}.`
+        : 'What name would you like to give me?';
     case 'ADD_EXPENSE':
       return `Added expense: ${actionResult?.item} for ${actionResult?.amount}.`;
     case 'UPDATE_EXPENSE':
@@ -89,6 +93,8 @@ async function toNaturalLanguage({ intent, patternId, actionResult, context, cla
   const prompt = [
     'Rewrite the given structured response in a concise, friendly tone.',
     'Stay factual; do not invent data.',
+    context?.assistantName ? `Assistant name: ${context.assistantName}` : '',
+    context?.userName ? `User name: ${context.userName}` : '',
     `Structured response: ${base}`,
     ctxText ? `Context:\n${ctxText}` : ''
   ].join('\n');

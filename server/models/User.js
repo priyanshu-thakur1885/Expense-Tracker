@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema({
       type: String,
       default: 'INR'
     },
+    assistantName: {
+      type: String,
+      default: 'AI Assistant'
+    },
     notifications: {
       type: Boolean,
       default: true

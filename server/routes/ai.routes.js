@@ -7,6 +7,7 @@ const { applyFeedback, planClarification } = require('../ai/learningEngine');
 const { toNaturalLanguage } = require('../ai/languageEngine');
 const actionEngine = require('../ai/actionEngine');
 const { embedText } = require('../ai/sharedEmbedding');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ async function ensureBasePatterns() {
     { patternId: 'MONTHLY_SUMMARY', handler: 'summary', sampleQuestions: ['how much did i spend this month', 'monthly expense total', 'show this month’s spending'], baseConfidence: 0.72 },
     { patternId: 'CATEGORY_ANALYSIS', handler: 'category', sampleQuestions: ['which category do i spend the most on', 'category breakdown', 'compare categories'], baseConfidence: 0.7 },
     { patternId: 'SET_BUDGET', handler: 'setBudget', sampleQuestions: ['my monthly budget is 6000rs', 'set my budget to 8000', 'monthly limit 5000'], baseConfidence: 0.7 },
+    { patternId: 'SET_ASSISTANT_NAME', handler: 'setAssistantName', sampleQuestions: ['i want to name you', 'set your name to hyperx', 'i will call you buddy'], baseConfidence: 0.7 },
   ];
   for (const seed of seeds) {
     await upsertPattern(seed);
@@ -32,6 +34,10 @@ router.post('/chat', authenticateToken, async (req, res) => {
     }
     const cleanMsg = message.trim();
 
+    // Fetch user for personalization
+    const userDoc = await User.findById(req.user._id).select('preferences name');
+    const assistantName = userDoc?.preferences?.assistantName || 'AI Assistant';
+
     // 1) Intent
     const intent = detectIntent(cleanMsg);
 
@@ -40,8 +46,8 @@ router.post('/chat', authenticateToken, async (req, res) => {
     const patternId = pattern?.patternId || 'UNKNOWN';
     const confidence = score || 0;
 
-    // 3) Clarification if low confidence
-    const clarification = planClarification({ confidence, intent });
+    // 3) Clarification if low confidence (default)
+    let clarification = planClarification({ confidence, intent });
     let actionResult = null;
     let success = false;
 
@@ -51,6 +57,18 @@ router.post('/chat', authenticateToken, async (req, res) => {
         const amount = expense?.amount || cleanMsg.match(/(\d+(?:\.\d+)?)/)?.[1];
         actionResult = await actionEngine.setBudget(req.user._id, amount);
         success = true;
+      } else if (intent === INTENTS.SET_ASSISTANT_NAME || patternId === 'SET_ASSISTANT_NAME') {
+        const extracted =
+          expense?.assistantName ||
+          cleanMsg.match(/call you\s+(.+)/i)?.[1] ||
+          cleanMsg.match(/name\s+(?:is|to|as)\s+(.+)/i)?.[1];
+        if (extracted) {
+          actionResult = await actionEngine.setAssistantName(req.user._id, extracted);
+          success = true;
+          clarification = null; // we have the data
+        } else {
+          clarification = 'What name would you like to give me?';
+        }
       } else if (intent === INTENTS.ADD_EXPENSE && expense) {
         actionResult = await actionEngine.addExpense(req.user._id, expense);
         success = true;
@@ -86,7 +104,7 @@ router.post('/chat', authenticateToken, async (req, res) => {
       intent,
       patternId,
       actionResult,
-      context: { confidence, patternId },
+      context: { confidence, patternId, assistantName, userName: userDoc?.name },
       clarification,
     });
 

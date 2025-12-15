@@ -1,6 +1,7 @@
 const Expense = require('../models/Expense');
 const Budget = require('../models/Budget');
 const mongoose = require('mongoose');
+const User = require('../models/User');
 
 async function setBudget(userId, amount) {
   if (!amount || Number.isNaN(Number(amount))) throw new Error('Budget amount is required');
@@ -23,6 +24,17 @@ async function setBudget(userId, amount) {
   budget.remainingBudget = remaining;
   await budget.save();
   return budget;
+}
+
+async function setAssistantName(userId, name) {
+  const clean = (name || '').trim();
+  if (!clean) throw new Error('Name is required');
+  const user = await User.findById(userId);
+  if (!user) throw new Error('User not found');
+  user.preferences = user.preferences || {};
+  user.preferences.assistantName = clean;
+  await user.save();
+  return { assistantName: clean };
 }
 
 async function addExpense(userId, payload) {
@@ -108,6 +120,7 @@ async function detectSpikes(userId, threshold = 1.25) {
 
 module.exports = {
   setBudget,
+  setAssistantName,
   addExpense,
   updateExpense,
   deleteExpense,
