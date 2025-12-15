@@ -3,51 +3,67 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 /**
- * Send a message to the AI assistant
- * @param {string} message - User's message
- * @returns {Promise<string>} - AI assistant's response
+ * Send a message to the AI assistant.
+ * Optional: include expense payload for CRUD intents.
  */
-export const sendAIMessage = async (message) => {
-  try {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      throw new Error('Not authenticated');
-    }
+export const sendAIMessage = async ({ message, expense }) => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Please log in to use the AI assistant');
 
+  try {
     const response = await axios.post(
       `${API_URL}/api/ai/chat`,
-      { message },
+      { message, expense },
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       }
     );
 
-    if (response.data.success) {
-      return response.data.response;
-    } else {
+    if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to get AI response');
     }
+
+    return {
+      text: response.data.response,
+      interactionId: response.data.interactionId,
+      confidence: response.data.confidence,
+      patternId: response.data.patternId,
+      intent: response.data.intent,
+      clarification: response.data.clarification,
+    };
   } catch (error) {
     console.error('AI service error:', error);
-    
     if (error.response?.status === 401) {
       throw new Error('Please log in to use the AI assistant');
-    } else if (error.response?.status === 500) {
-      throw new Error('AI service is temporarily unavailable. Please try again later.');
-    } else if (error.message.includes('GEMINI_API_KEY') || 
-               error.message.includes('GROQ_API_KEY') || 
-               error.message.includes('HUGGINGFACE_API_KEY')) {
-      throw new Error('AI service is not configured. Please contact support.');
-    } else {
-      throw new Error(error.response?.data?.message || error.message || 'Failed to communicate with AI assistant');
     }
+    throw new Error(error.response?.data?.message || error.message || 'AI service unavailable');
+  }
+};
+
+export const sendFeedback = async ({ interactionId, rating, patternId, correction }) => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Please log in to send feedback');
+  try {
+    await axios.post(
+      `${API_URL}/api/ai/feedback`,
+      { interactionId, rating, patternId, correction },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('AI feedback error:', error);
+    throw new Error(error.response?.data?.message || error.message || 'Failed to send feedback');
   }
 };
 
 export default {
-  sendAIMessage
+  sendAIMessage,
+  sendFeedback,
 };

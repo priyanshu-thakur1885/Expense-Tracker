@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, X, Send, Loader2, Sparkles } from 'lucide-react';
+import { Bot, X, Send, Loader2, Sparkles, ThumbsUp, ThumbsDown, ShieldQuestion } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import aiService from '../services/aiService';
 import toast from 'react-hot-toast';
@@ -19,8 +19,8 @@ const AIAssistant = ({ isOpen, onClose }) => {
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: `Hello ${user?.name || 'there'}! 👋 I'm your AI expense assistant. I can help you with:\n\n• Analyzing your spending patterns\n• Budget recommendations\n• Expense insights\n• Answering questions about your expenses\n\nWhat would you like to know?`,
-        timestamp: new Date().toISOString()
+        content: `Hello ${user?.name || 'there'}! 👋 I'm your expense assistant.\nI can:\n• Add/update/delete expenses (tell me the details)\n• Show monthly summary / category comparisons\n• Explain spending spikes\n\nWhat would you like to do?`,
+        timestamp: new Date().toISOString(),
       }]);
     }
   }, [isOpen, user?.name]);
@@ -58,14 +58,20 @@ const AIAssistant = ({ isOpen, onClose }) => {
 
     try {
       // Get AI response
-      const aiResponse = await aiService.sendAIMessage(userMessage);
+      const result = await aiService.sendAIMessage({ message: userMessage });
 
       // Add AI response
       const newAIMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date().toISOString()
+        content: result.text,
+        timestamp: new Date().toISOString(),
+        interactionId: result.interactionId,
+        patternId: result.patternId,
+        intent: result.intent,
+        confidence: result.confidence,
+        clarification: result.clarification,
+        feedback: 0,
       };
 
       setMessages(prev => [...prev, newAIMessage]);
@@ -92,6 +98,20 @@ const AIAssistant = ({ isOpen, onClose }) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleFeedback = async (messageId, rating, interactionId, patternId) => {
+    if (!interactionId) return;
+    // optimistic update
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, feedback: rating } : m));
+    try {
+      await aiService.sendFeedback({ interactionId, rating, patternId });
+      toast.success('Feedback sent');
+    } catch (error) {
+      toast.error(error.message || 'Failed to send feedback');
+      // rollback
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, feedback: 0 } : m));
     }
   };
 
@@ -158,12 +178,51 @@ const AIAssistant = ({ isOpen, onClose }) => {
                   }`}
                 >
                   {message.role === 'assistant' && !message.isError && (
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Sparkles className="w-4 h-4 text-purple-500" />
-                      <span className="text-xs font-medium opacity-75">AI Assistant</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Sparkles className="w-4 h-4 text-purple-500" />
+                        <span className="text-xs font-medium opacity-75">AI Assistant</span>
+                        {message.clarification && (
+                          <div className="flex items-center text-amber-600 text-xs space-x-1">
+                            <ShieldQuestion className="w-3 h-3" />
+                            <span>low confidence</span>
+                          </div>
+                        )}
+                      </div>
+                      {typeof message.confidence === 'number' && (
+                        <span className="text-[10px] px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">
+                          conf {message.confidence.toFixed(2)}
+                        </span>
+                      )}
                     </div>
                   )}
                   <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+
+                  {message.role === 'assistant' && !message.isError && message.interactionId && (
+                    <div className="flex items-center space-x-2 mt-3">
+                      <button
+                        onClick={() => handleFeedback(message.id, 1, message.interactionId, message.patternId)}
+                        className={`flex items-center space-x-1 text-xs px-2 py-1 rounded ${
+                          message.feedback === 1 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                        }`}
+                        aria-label="Thumbs up"
+                      >
+                        <ThumbsUp className="w-3 h-3" />
+                        <span>Helpful</span>
+                      </button>
+                      <button
+                        onClick={() => handleFeedback(message.id, -1, message.interactionId, message.patternId)}
+                        className={`flex items-center space-x-1 text-xs px-2 py-1 rounded ${
+                          message.feedback === -1 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                        }`}
+                        aria-label="Thumbs down"
+                      >
+                        <ThumbsDown className="w-3 h-3" />
+                        <span>Not helpful</span>
+                      </button>
+                    </div>
+                  )}
+
                   <div className={`text-xs mt-2 opacity-75 ${
                     message.role === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
                   }`}>
