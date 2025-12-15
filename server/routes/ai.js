@@ -329,7 +329,7 @@ Guidelines:
 
     // Call AI API (Google Gemini, Groq, or Hugging Face)
     const startTime = Date.now();
-    const aiProvider = process.env.AI_PROVIDER || 'groq'; // Default to groq for better free tier
+    const aiProvider = process.env.AI_PROVIDER || 'gemini'; // Default to groq for better free tier
     const aiResponse = await callAIAPI(message, contextPrompt);
     const responseTime = Date.now() - startTime;
 
