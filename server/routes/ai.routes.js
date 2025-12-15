@@ -55,8 +55,13 @@ router.post('/chat', authenticateToken, async (req, res) => {
     try {
       if (intent === INTENTS.SET_BUDGET || patternId === 'SET_BUDGET') {
         const amount = expense?.amount || cleanMsg.match(/(\d+(?:\.\d+)?)/)?.[1];
-        actionResult = await actionEngine.setBudget(req.user._id, amount);
-        success = true;
+        if (amount) {
+          actionResult = await actionEngine.setBudget(req.user._id, amount);
+          success = true;
+          clarification = null; // we have what we need
+        } else {
+          clarification = 'What budget amount should I set?';
+        }
       } else if (intent === INTENTS.SET_ASSISTANT_NAME || patternId === 'SET_ASSISTANT_NAME') {
         const extracted =
           expense?.assistantName ||
