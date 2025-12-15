@@ -8,6 +8,7 @@ const { toNaturalLanguage } = require('../ai/languageEngine');
 const actionEngine = require('../ai/actionEngine');
 const { embedText } = require('../ai/sharedEmbedding');
 const User = require('../models/User');
+const AIInteraction = require('../models/AIInteraction');
 
 const router = express.Router();
 
@@ -37,6 +38,11 @@ router.post('/chat', authenticateToken, async (req, res) => {
     // Fetch user for personalization
     const userDoc = await User.findById(req.user._id).select('preferences name');
     const assistantName = userDoc?.preferences?.assistantName || 'AI Assistant';
+    // Last interaction to allow follow-ups (e.g., naming flow)
+    const lastInteraction = await AIInteraction.findOne({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .select('detectedPattern intent success')
+      .lean();
 
     // 1) Intent
     const intent = detectIntent(cleanMsg);
@@ -62,11 +68,16 @@ router.post('/chat', authenticateToken, async (req, res) => {
         } else {
           clarification = 'What budget amount should I set?';
         }
-      } else if (intent === INTENTS.SET_ASSISTANT_NAME || patternId === 'SET_ASSISTANT_NAME') {
+      } else if (
+        intent === INTENTS.SET_ASSISTANT_NAME ||
+        patternId === 'SET_ASSISTANT_NAME' ||
+        (lastInteraction?.detectedPattern === 'SET_ASSISTANT_NAME' && !lastInteraction.success)
+      ) {
         const extracted =
           expense?.assistantName ||
           cleanMsg.match(/call you\s+(.+)/i)?.[1] ||
-          cleanMsg.match(/name\s+(?:is|to|as)\s+(.+)/i)?.[1];
+          cleanMsg.match(/name\s+(?:is|to|as)\s+(.+)/i)?.[1] ||
+          cleanMsg;
         if (extracted) {
           actionResult = await actionEngine.setAssistantName(req.user._id, extracted);
           success = true;
