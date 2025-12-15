@@ -15,6 +15,7 @@ async function ensureBasePatterns() {
   const seeds = [
     { patternId: 'MONTHLY_SUMMARY', handler: 'summary', sampleQuestions: ['how much did i spend this month', 'monthly expense total', 'show this month’s spending'], baseConfidence: 0.72 },
     { patternId: 'CATEGORY_ANALYSIS', handler: 'category', sampleQuestions: ['which category do i spend the most on', 'category breakdown', 'compare categories'], baseConfidence: 0.7 },
+    { patternId: 'SET_BUDGET', handler: 'setBudget', sampleQuestions: ['my monthly budget is 6000rs', 'set my budget to 8000', 'monthly limit 5000'], baseConfidence: 0.7 },
   ];
   for (const seed of seeds) {
     await upsertPattern(seed);
@@ -46,7 +47,11 @@ router.post('/chat', authenticateToken, async (req, res) => {
 
     // 4) Action routing (deterministic)
     try {
-      if (intent === INTENTS.ADD_EXPENSE && expense) {
+      if (intent === INTENTS.SET_BUDGET || patternId === 'SET_BUDGET') {
+        const amount = expense?.amount || cleanMsg.match(/(\d+(?:\.\d+)?)/)?.[1];
+        actionResult = await actionEngine.setBudget(req.user._id, amount);
+        success = true;
+      } else if (intent === INTENTS.ADD_EXPENSE && expense) {
         actionResult = await actionEngine.addExpense(req.user._id, expense);
         success = true;
       } else if (intent === INTENTS.UPDATE_EXPENSE && expense?.id) {
