@@ -18,7 +18,8 @@
   const adminRoutes = require('./routes/admin');
   const bugReportRoutes = require('./routes/bugReport');
   const paymentRoutes = require('./routes/payment');
-  const aiRoutes = require('./routes/ai');
+  // New AI assistant (multi-engine, no Gemini/OpenAI)
+  const aiRoutes = require('./routes/ai.routes');
 
   // Import passport configuration
   require('./config/passport');
