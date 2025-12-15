@@ -26,6 +26,19 @@ async function setBudget(userId, amount) {
   return budget;
 }
 
+async function getBudget(userId) {
+  const budget = await Budget.findOne({ userId });
+  if (!budget) {
+    return { message: 'No budget set yet.' };
+  }
+  return {
+    monthlyLimit: budget.monthlyLimit,
+    currentSpent: budget.currentSpent,
+    remainingBudget: budget.remainingBudget ?? (budget.monthlyLimit - (budget.currentSpent || 0)),
+    status: budget.status || 'unknown',
+  };
+}
+
 async function setAssistantName(userId, name) {
   const clean = (name || '').trim();
   if (!clean) throw new Error('Name is required');
@@ -120,6 +133,7 @@ async function detectSpikes(userId, threshold = 1.25) {
 
 module.exports = {
   setBudget,
+  getBudget,
   setAssistantName,
   addExpense,
   updateExpense,

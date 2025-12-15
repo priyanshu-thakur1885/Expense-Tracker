@@ -9,6 +9,7 @@ const INTENTS = {
   SHOW_SUMMARY: 'SHOW_SUMMARY',
   CATEGORY_ANALYSIS: 'CATEGORY_ANALYSIS',
   SET_BUDGET: 'SET_BUDGET',
+  GET_BUDGET: 'GET_BUDGET',
   SET_ASSISTANT_NAME: 'SET_ASSISTANT_NAME',
   GENERAL_QUESTION: 'GENERAL_QUESTION',
   UNKNOWN: 'UNKNOWN',
@@ -33,7 +34,8 @@ function detectIntent(text) {
   }
   if (hasUpdate && hasExpenseKeywords) return INTENTS.UPDATE_EXPENSE;
   if (hasDelete && hasExpenseKeywords) return INTENTS.DELETE_EXPENSE;
-  if (hasBudget && hasCurrencyNumber) return INTENTS.SET_BUDGET;
+  if (hasBudget && hasCurrencyNumber && (hasAdd || /set/.test(msg))) return INTENTS.SET_BUDGET;
+  if (hasBudget && !hasCurrencyNumber) return INTENTS.GET_BUDGET;
   if (wantsName) return INTENTS.SET_ASSISTANT_NAME;
   if (hasSummary) return INTENTS.SHOW_SUMMARY;
   if (hasCategory && (hasSummary || /compare|comparison|vs/.test(msg))) return INTENTS.CATEGORY_ANALYSIS;

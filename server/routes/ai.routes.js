@@ -18,6 +18,7 @@ async function ensureBasePatterns() {
     { patternId: 'MONTHLY_SUMMARY', handler: 'summary', sampleQuestions: ['how much did i spend this month', 'monthly expense total', 'show this month’s spending'], baseConfidence: 0.72 },
     { patternId: 'CATEGORY_ANALYSIS', handler: 'category', sampleQuestions: ['which category do i spend the most on', 'category breakdown', 'compare categories'], baseConfidence: 0.7 },
     { patternId: 'SET_BUDGET', handler: 'setBudget', sampleQuestions: ['my monthly budget is 6000rs', 'set my budget to 8000', 'monthly limit 5000'], baseConfidence: 0.7 },
+    { patternId: 'GET_BUDGET', handler: 'getBudget', sampleQuestions: ['what is my monthly budget', 'show my budget', 'current budget amount'], baseConfidence: 0.7 },
     { patternId: 'SET_ASSISTANT_NAME', handler: 'setAssistantName', sampleQuestions: ['i want to name you', 'set your name to hyperx', 'i will call you buddy'], baseConfidence: 0.7 },
   ];
   for (const seed of seeds) {
@@ -68,6 +69,10 @@ router.post('/chat', authenticateToken, async (req, res) => {
         } else {
           clarification = 'What budget amount should I set?';
         }
+      } else if (intent === INTENTS.GET_BUDGET || patternId === 'GET_BUDGET') {
+        actionResult = await actionEngine.getBudget(req.user._id);
+        success = true;
+        clarification = null;
       } else if (
         intent === INTENTS.SET_ASSISTANT_NAME ||
         patternId === 'SET_ASSISTANT_NAME' ||
