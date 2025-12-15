@@ -15,11 +15,11 @@ const router = express.Router();
 // Bootstrap a few patterns on startup
 async function ensureBasePatterns() {
   const seeds = [
-    { patternId: 'MONTHLY_SUMMARY', handler: 'summary', sampleQuestions: ['how much did i spend this month', 'monthly expense total', 'show this month’s spending'], baseConfidence: 0.72 },
+    { patternId: 'MONTHLY_SUMMARY', handler: 'summary', sampleQuestions: ['how much did i spend this month', 'monthly expense total', 'show this month’s spending', 'monthly spend', 'total spent this month', 'what is my monthly expense'], baseConfidence: 0.72 },
     { patternId: 'CATEGORY_ANALYSIS', handler: 'category', sampleQuestions: ['which category do i spend the most on', 'category breakdown', 'compare categories'], baseConfidence: 0.7 },
-    { patternId: 'SET_BUDGET', handler: 'setBudget', sampleQuestions: ['my monthly budget is 6000rs', 'set my budget to 8000', 'monthly limit 5000'], baseConfidence: 0.7 },
-    { patternId: 'GET_BUDGET', handler: 'getBudget', sampleQuestions: ['what is my monthly budget', 'show my budget', 'current budget amount'], baseConfidence: 0.7 },
-    { patternId: 'SET_ASSISTANT_NAME', handler: 'setAssistantName', sampleQuestions: ['i want to name you', 'set your name to hyperx', 'i will call you buddy'], baseConfidence: 0.7 },
+    { patternId: 'SET_BUDGET', handler: 'setBudget', sampleQuestions: ['my monthly budget is 6000rs', 'set my budget to 8000', 'monthly limit 5000', 'set budget 4000', 'budget 3000'], baseConfidence: 0.7 },
+    { patternId: 'GET_BUDGET', handler: 'getBudget', sampleQuestions: ['what is my monthly budget', 'show my budget', 'current budget amount', 'budget left', 'remaining budget', 'how much budget do i have'], baseConfidence: 0.7 },
+    { patternId: 'SET_ASSISTANT_NAME', handler: 'setAssistantName', sampleQuestions: ['i want to name you', 'set your name to hyperx', 'i will call you buddy', 'your name is hyperx', 'call you hyperx'], baseConfidence: 0.7 },
   ];
   for (const seed of seeds) {
     await upsertPattern(seed);
@@ -154,7 +154,11 @@ router.post('/chat', authenticateToken, async (req, res) => {
       clarification: !!clarification
     });
   } catch (error) {
-    console.error('AI chat error:', error);
+    console.error('AI chat error:', {
+      message: error.message,
+      intent: req?.body?.message,
+      stack: error.stack
+    });
     return res.status(500).json({ success: false, message: error.message || 'Chat failed' });
   }
 });

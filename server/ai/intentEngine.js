@@ -23,9 +23,9 @@ function detectIntent(text) {
   const hasAdd = /(add|record|create|log)/.test(msg);
   const hasUpdate = /(update|edit|change|modify)/.test(msg);
   const hasDelete = /(delete|remove)/.test(msg);
-  const hasSummary = /(summary|total|how much|spent this month|month|weekly|daily)/.test(msg);
+  const hasSummary = /(summary|total|how much|spent this month|monthly spend|monthly expense|month|weekly|daily|this month)/.test(msg);
   const hasCategory = /(category|categories|food|travel|shopping|rent|grocery|groceries)/.test(msg);
-  const hasBudget = /(budget|limit|cap|monthly limit|set budget|my budget)/.test(msg);
+  const hasBudget = /(budget|limit|cap|monthly limit|set budget|my budget|remaining budget|budget left|current budget)/.test(msg);
   const hasCurrencyNumber = /(rs|inr|₹)\s*\d+|\d+\s*(rs|inr|₹)/.test(msg) || /\b\d{3,}\b/.test(msg);
   const wantsName = /(name you|call you|your name|set your name|give you a name|rename you)/.test(msg);
 
