@@ -1,7 +1,7 @@
 const AIPattern = require('../models/AIPattern');
 const { embedText, cosineSimilarity } = require('./sharedEmbedding');
 
-const DEFAULT_THRESHOLD = 0.75;
+const DEFAULT_THRESHOLD = 0.6;
 const MAX_CANDIDATES = 50;
 
 async function findBestPattern(question) {

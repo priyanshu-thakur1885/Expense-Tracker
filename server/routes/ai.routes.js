@@ -53,8 +53,8 @@ router.post('/chat', authenticateToken, async (req, res) => {
     const patternId = pattern?.patternId || 'UNKNOWN';
     const confidence = score || 0;
 
-    // 3) Clarification if low confidence (default)
-    let clarification = intent === INTENTS.GREETING ? null : planClarification({ confidence, intent });
+    // 3) Clarification will be decided after attempting action
+    let clarification = null;
     let actionResult = null;
     let success = false;
 
@@ -107,6 +107,7 @@ router.post('/chat', authenticateToken, async (req, res) => {
       } else if (intent === INTENTS.SHOW_SUMMARY || patternId === 'MONTHLY_SUMMARY') {
         actionResult = await actionEngine.getMonthlySummary(req.user._id, 0);
         success = true;
+        clarification = null;
       } else if (intent === INTENTS.CATEGORY_ANALYSIS || patternId === 'CATEGORY_ANALYSIS') {
         actionResult = await actionEngine.getCategoryComparison(req.user._id);
         success = true;
@@ -122,6 +123,11 @@ router.post('/chat', authenticateToken, async (req, res) => {
       }
     } catch (err) {
       actionResult = { error: err.message };
+    }
+
+    // If no success and no clarification yet, provide a targeted clarification
+    if (!success && !clarification) {
+      clarification = planClarification({ confidence, intent });
     }
 
     // 5) Response generation (LLM optional, only for phrasing)
