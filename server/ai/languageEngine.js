@@ -3,6 +3,11 @@ const { URL } = require('url');
 
 // Lightweight language generator with optional Ollama (local) support.
 
+function safeNumber(n, fallback = 0) {
+  return typeof n === 'number' && !isNaN(n) ? n : fallback;
+}
+
+
 function serializeContext(ctx) {
   if (!ctx) return '';
   return Object.entries(ctx)
@@ -25,11 +30,23 @@ function templateResponse({ intent, patternId, actionResult, clarification }) {
       return `From ${period?.start?.toLocaleDateString?.() || '?'} to ${period?.end?.toLocaleDateString?.() || '?'} you spent ₹${(total || 0).toFixed(2)} across ${count || 0} expenses. Top categories: ${cats}.`;
     }
     case 'MONTHLY_COMPARISON': {
-      if (!actionResult) return 'No comparison data.';
-      const { current, previous, delta, pct } = actionResult;
-      const direction = delta > 0 ? 'less' : delta < 0 ? 'more' : 'the same as';
-      return `This month you spent ₹${(current?.total || 0).toFixed(2)}and the last month expenses were ₹${(previous?.total || 0).toFixed(2)}. You spent ${direction} last month. Change: ₹${delta.toFixed(2)}${pct !== null && pct !== undefined ? ` (${pct.toFixed(1)}%)` : ''}.`;
+      if (!actionResult) return 'No comparison data available yet.';
+    
+      const currentTotal = safeNumber(actionResult.current?.total);
+      const previousTotal = safeNumber(actionResult.previous?.total);
+      const delta = safeNumber(actionResult.delta);
+      const pct = safeNumber(actionResult.pct, null);
+    
+      let directionText = 'the same as';
+      if (delta > 0) directionText = 'more than';
+      else if (delta < 0) directionText = 'less than';
+    
+      return `This month you spent ₹${currentTotal.toFixed(2)}, while last month you spent ₹${previousTotal.toFixed(2)}.
+    That’s ${directionText} last month by ₹${Math.abs(delta).toFixed(2)}${
+        pct !== null ? ` (${Math.abs(pct).toFixed(1)}%)` : ''
+      }.`;
     }
+    
     case 'OVERSPENDING_CHECK': {
       if (!actionResult || actionResult.message === 'No budget set yet.') return 'You have not set a budget yet.';
       const { status, monthlyLimit, currentSpent, remaining, percent } = actionResult;
