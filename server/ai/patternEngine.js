@@ -10,10 +10,26 @@ async function findBestPattern(question) {
 
   const qEmbedding = await embedText(question);
   if (!qEmbedding) {
-    // Fallback: naive keyword match
+    // Fallback: improved keyword matching (when embeddings unavailable)
     const lower = question.toLowerCase();
-    const hit = patterns.find(p => p.sampleQuestions.some(sq => lower.includes(sq.toLowerCase())));
-    return hit ? { pattern: hit, score: 0.5 } : { pattern: null, score: 0 };
+    let bestMatch = null;
+    let bestScore = 0;
+    for (const p of patterns) {
+      let matchCount = 0;
+      const keywords = lower.split(/\s+/).filter(w => w.length > 2); // Words > 2 chars
+      for (const sq of p.sampleQuestions || []) {
+        const sqLower = sq.toLowerCase();
+        const matched = keywords.filter(kw => sqLower.includes(kw)).length;
+        if (matched > 0) {
+          matchCount += matched / keywords.length; // Normalize by question length
+        }
+      }
+      if (matchCount > bestScore) {
+        bestMatch = p;
+        bestScore = matchCount;
+      }
+    }
+    return bestMatch ? { pattern: bestMatch, score: Math.min(0.65, bestScore) } : { pattern: null, score: 0 };
   }
 
   let best = null;

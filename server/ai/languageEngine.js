@@ -27,8 +27,8 @@ function templateResponse({ intent, patternId, actionResult, clarification }) {
     case 'MONTHLY_COMPARISON': {
       if (!actionResult) return 'No comparison data.';
       const { current, previous, delta, pct } = actionResult;
-      const direction = delta > 0 ? 'more' : delta < 0 ? 'less' : 'the same as';
-      return `This month: ₹${(current?.total || 0).toFixed(2)}. Last month: ₹${(previous?.total || 0).toFixed(2)}. You spent ${direction} last month. Change: ₹${delta.toFixed(2)}${pct !== null && pct !== undefined ? ` (${pct.toFixed(1)}%)` : ''}.`;
+      const direction = delta < 0 ? 'more' : delta > 0 ? 'less' : 'the same as';
+      return `This month you spent ₹${(current?.total || 0).toFixed(2)}and the last month expenses were ₹${(previous?.total || 0).toFixed(2)}. You spent ${direction} last month. Change: ₹${delta.toFixed(2)}${pct !== null && pct !== undefined ? ` (${pct.toFixed(1)}%)` : ''}.`;
     }
     case 'OVERSPENDING_CHECK': {
       if (!actionResult || actionResult.message === 'No budget set yet.') return 'You have not set a budget yet.';

@@ -2,17 +2,25 @@ const https = require('https');
 
 let localEmbedder = null;
 let loading = false;
+let embedderWarningShown = false;
 
 // Attempt to use @xenova/transformers if available (pure JS, no external API).
 async function loadLocalEmbedder() {
   if (loading) return localEmbedder;
+  if (localEmbedder !== null) return localEmbedder; // Already tried
   loading = true;
   try {
     // Dynamic import to avoid hard dependency if not installed.
     const { pipeline } = await import('@xenova/transformers');
     localEmbedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    console.log('✅ Local embedder loaded (Xenova transformers)');
   } catch (err) {
-    console.warn('Local embedder not available:', err.message);
+    localEmbedder = false; // Mark as failed so we don't retry
+    if (!embedderWarningShown) {
+      console.warn('⚠️ Local embedder not available (using keyword fallback). Install with: npm install @xenova/transformers');
+      console.warn('   Or set OLLAMA_EMBED_MODEL for Ollama embeddings');
+      embedderWarningShown = true;
+    }
   } finally {
     loading = false;
   }
