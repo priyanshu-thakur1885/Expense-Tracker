@@ -16,6 +16,13 @@ function templateResponse({ intent, patternId, actionResult, clarification }) {
   switch (intent) {
     case 'GREETING':
       return 'Hey there! I can help with budgets, expenses, summaries, and category breakdowns. Try: "What is my monthly budget?" or "How much did I spend this month?"';
+    case 'GET_BUDGET': {
+      if (!actionResult || actionResult.message === 'No budget set yet.') {
+        return 'You have not set a budget yet.';
+      }
+      const { monthlyLimit, currentSpent, remainingBudget, status } = actionResult;
+      return `Budget: ${monthlyLimit?.toFixed ? monthlyLimit.toFixed(2) : monthlyLimit}\nSpent: ${currentSpent?.toFixed ? currentSpent.toFixed(2) : currentSpent}\nRemaining: ${remainingBudget?.toFixed ? remainingBudget.toFixed(2) : remainingBudget}\nStatus: ${status || '—'}`;
+    }
     case 'SET_ASSISTANT_NAME':
       return actionResult?.assistantName
         ? `Got it — call me ${actionResult.assistantName}.`

@@ -125,6 +125,19 @@ router.post('/chat', authenticateToken, async (req, res) => {
       actionResult = { error: err.message };
     }
 
+    // Fallback: if still not successful and the message looks budget-related (no amount), return current budget
+    if (!success) {
+      const budgety = /\b(budget|remaining budget|budget left|current budget|budget status)\b/.test(userMessage);
+      const hasNumber = /\d/.test(userMessage);
+      if (budgety && !hasNumber) {
+        actionResult = await actionEngine.getBudget(req.user._id);
+        success = true;
+        clarification = null;
+        intent = INTENTS.GET_BUDGET;
+        patternId = 'GET_BUDGET';
+      }
+    }
+
     // If no success and no clarification yet, provide a targeted clarification
     if (!success && !clarification) {
       clarification = planClarification({ confidence, intent });
