@@ -54,13 +54,17 @@ router.post('/chat', authenticateToken, async (req, res) => {
     const confidence = score || 0;
 
     // 3) Clarification if low confidence (default)
-    let clarification = planClarification({ confidence, intent });
+    let clarification = intent === INTENTS.GREETING ? null : planClarification({ confidence, intent });
     let actionResult = null;
     let success = false;
 
     // 4) Action routing (deterministic)
     try {
-      if (intent === INTENTS.SET_BUDGET || patternId === 'SET_BUDGET') {
+      if (intent === INTENTS.GREETING) {
+        actionResult = { text: `Hi there! I'm ${assistantName}.` };
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.SET_BUDGET || patternId === 'SET_BUDGET') {
         const amount = expense?.amount || cleanMsg.match(/(\d+(?:\.\d+)?)/)?.[1];
         if (amount) {
           actionResult = await actionEngine.setBudget(req.user._id, amount);

@@ -14,6 +14,8 @@ function templateResponse({ intent, patternId, actionResult, clarification }) {
   if (clarification) return clarification;
 
   switch (intent) {
+    case 'GREETING':
+      return 'Hey there! I can help with budgets, expenses, summaries, and category breakdowns. Try: "What is my monthly budget?" or "How much did I spend this month?"';
     case 'SET_ASSISTANT_NAME':
       return actionResult?.assistantName
         ? `Got it — call me ${actionResult.assistantName}.`

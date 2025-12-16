@@ -12,6 +12,7 @@ const INTENTS = {
   GET_BUDGET: 'GET_BUDGET',
   SET_ASSISTANT_NAME: 'SET_ASSISTANT_NAME',
   GENERAL_QUESTION: 'GENERAL_QUESTION',
+  GREETING: 'GREETING',
   UNKNOWN: 'UNKNOWN',
 };
 
@@ -28,7 +29,9 @@ function detectIntent(text) {
   const hasBudget = /(budget|limit|cap|monthly limit|set budget|my budget|remaining budget|budget left|current budget)/.test(msg);
   const hasCurrencyNumber = /(rs|inr|₹)\s*\d+|\d+\s*(rs|inr|₹)/.test(msg) || /\b\d{3,}\b/.test(msg);
   const wantsName = /(name you|call you|your name|set your name|give you a name|rename you)/.test(msg);
+  const greeting = /^(hi|hello|hey|yo|sup|good morning|good afternoon|good evening)\b/.test(msg);
 
+  if (greeting) return INTENTS.GREETING;
   if ((hasAdd || /i bought|i spent|i paid/.test(msg)) && hasExpenseKeywords && hasAmount) {
     return INTENTS.ADD_EXPENSE;
   }
