@@ -28,7 +28,12 @@ function templateResponse({ intent, patternId, actionResult, clarification }) {
       return `Deleted expense ${actionResult?._id}.`;
     case 'SHOW_SUMMARY':
       if (!actionResult) return 'No summary available.';
-      return `You spent ${actionResult.total.toFixed(2)} this period across ${actionResult.count} expenses. Top categories: ${Object.entries(actionResult.byCategory).map(([c,a])=>`${c}:${a.toFixed(2)}`).join(', ') || 'n/a'}.`;
+      return `You’ve spent ₹${actionResult.total.toFixed(2)} during this period across ${actionResult.count} expenses.
+Your top spending categories were ${Object.entries(actionResult.byCategory)
+  .map(([c, a]) => `${c} (₹${a.toFixed(2)})`)
+  .join(', ') || 'not available'}.
+Would you like a daily breakdown or a comparison with last month?`;
+
     case 'CATEGORY_ANALYSIS':
       if (!actionResult) return 'No category data.';
       return `Category totals: ${actionResult.byCategory.map(([c,a])=>`${c}:${a.toFixed(2)}`).join(', ')}`;
