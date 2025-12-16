@@ -27,7 +27,7 @@ function templateResponse({ intent, patternId, actionResult, clarification }) {
     case 'MONTHLY_COMPARISON': {
       if (!actionResult) return 'No comparison data.';
       const { current, previous, delta, pct } = actionResult;
-      const direction = delta < 0 ? 'more' : delta > 0 ? 'less' : 'the same as';
+      const direction = delta > 0 ? 'less' : delta < 0 ? 'more' : 'the same as';
       return `This month you spent ₹${(current?.total || 0).toFixed(2)}and the last month expenses were ₹${(previous?.total || 0).toFixed(2)}. You spent ${direction} last month. Change: ₹${delta.toFixed(2)}${pct !== null && pct !== undefined ? ` (${pct.toFixed(1)}%)` : ''}.`;
     }
     case 'OVERSPENDING_CHECK': {
