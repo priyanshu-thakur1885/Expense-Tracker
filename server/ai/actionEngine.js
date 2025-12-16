@@ -3,6 +3,30 @@ const Budget = require('../models/Budget');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
+function toDate(input) {
+  const d = new Date(input);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function normalizeRange(startInput, endInput) {
+  let start = startInput ? toDate(startInput) : null;
+  let end = endInput ? toDate(endInput) : null;
+  if (!start && !end) {
+    // default last 30 days
+    end = new Date();
+    start = new Date();
+    start.setDate(end.getDate() - 30);
+  }
+  if (start && !end) {
+    end = new Date();
+  }
+  if (end && !start) {
+    start = new Date(end);
+    start.setDate(start.getDate() - 30);
+  }
+  return { start, end };
+}
+
 async function setBudget(userId, amount) {
   if (!amount || Number.isNaN(Number(amount))) throw new Error('Budget amount is required');
   const numeric = parseFloat(amount);
@@ -131,6 +155,146 @@ async function detectSpikes(userId, threshold = 1.25) {
   return spikes;
 }
 
+async function getSummaryByRange(userId, startDate, endDate) {
+  const { start, end } = normalizeRange(startDate, endDate);
+  const expenses = await Expense.find({ userId, date: { $gte: start, $lt: end } });
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const byCategory = expenses.reduce((acc, e) => {
+    acc[e.category] = (acc[e.category] || 0) + e.amount;
+    return acc;
+  }, {});
+  return { total, byCategory, count: expenses.length, period: { start, end } };
+}
+
+async function compareMonths(userId, offsetA = 0, offsetB = -1) {
+  const a = await getMonthlySummary(userId, offsetA);
+  const b = await getMonthlySummary(userId, offsetB);
+  const delta = a.total - b.total;
+  const pct = b.total ? (delta / b.total) * 100 : null;
+  return { current: a, previous: b, delta, pct };
+}
+
+async function getOverspendingStatus(userId) {
+  const budget = await Budget.findOne({ userId });
+  if (!budget) return { message: 'No budget set yet.' };
+  const remaining = budget.monthlyLimit - (budget.currentSpent || 0);
+  const pct = budget.monthlyLimit ? (budget.currentSpent / budget.monthlyLimit) * 100 : null;
+  let status = 'safe';
+  if (pct >= 100) status = 'over';
+  else if (pct >= 90) status = 'danger';
+  else if (pct >= 75) status = 'warning';
+  return {
+    status,
+    monthlyLimit: budget.monthlyLimit,
+    currentSpent: budget.currentSpent,
+    remaining,
+    percent: pct,
+  };
+}
+
+async function getTopCategories(userId, opts = {}) {
+  const { startDate, endDate, topN = 3, direction = 'desc' } = opts;
+  const { start, end } = normalizeRange(startDate, endDate);
+  const query = { userId };
+  if (start && end) query.date = { $gte: start, $lt: end };
+  const expenses = await Expense.find(query);
+  const byCategory = expenses.reduce((acc, e) => {
+    acc[e.category] = (acc[e.category] || 0) + e.amount;
+    return acc;
+  }, {});
+  let sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+  if (direction === 'asc') sorted = sorted.reverse();
+  const top = sorted.slice(0, topN);
+  return { categories: top, period: { start, end }, count: expenses.length };
+}
+
+async function searchExpenses(userId, filters = {}) {
+  const query = { userId };
+  if (filters.startDate || filters.endDate) {
+    const { start, end } = normalizeRange(filters.startDate, filters.endDate);
+    query.date = { $gte: start, $lt: end };
+  }
+  if (filters.minAmount || filters.maxAmount) {
+    query.amount = {};
+    if (filters.minAmount) query.amount.$gte = parseFloat(filters.minAmount);
+    if (filters.maxAmount) query.amount.$lte = parseFloat(filters.maxAmount);
+  }
+  if (filters.category) {
+    query.category = filters.category;
+  }
+  if (filters.keyword) {
+    const regex = new RegExp(filters.keyword, 'i');
+    query.$or = [{ item: regex }, { description: regex }];
+  }
+  const expenses = await Expense.find(query).sort({ date: -1 }).limit(10);
+  const totalCount = await Expense.countDocuments(query);
+  const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
+  return { totalCount, sample: expenses, sampleTotal: totalAmount, filters };
+}
+
+async function forecastSpend(userId) {
+  const now = new Date();
+  const end = now;
+  const start = new Date();
+  start.setDate(end.getDate() - 30);
+  const expenses = await Expense.find({ userId, date: { $gte: start, $lt: end } });
+  if (!expenses.length) return { message: 'Not enough data to forecast.' };
+
+  const totalSample = expenses.reduce((s, e) => s + e.amount, 0);
+  const daysSample = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24)));
+  const avgPerDay = totalSample / daysSample;
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysElapsed = Math.max(1, now.getDate());
+  const daysRemaining = Math.max(0, daysInMonth - daysElapsed);
+
+  // Sum spent so far this month
+  const spentThisMonth = expenses
+    .filter(e => e.date >= monthStart)
+    .reduce((s, e) => s + e.amount, 0);
+
+  const projectedMonthTotal = spentThisMonth + avgPerDay * daysRemaining;
+
+  return {
+    avgPerDay,
+    daysConsidered: daysSample,
+    daysRemaining,
+    spentThisMonth,
+    projectedMonthTotal,
+  };
+}
+
+async function advice(userId) {
+  const budget = await Budget.findOne({ userId });
+  const month = await getMonthlySummary(userId, 0);
+  const categories = Object.entries(month.byCategory || {}).sort((a, b) => b[1] - a[1]);
+  const topCat = categories[0];
+  const suggestions = [];
+
+  if (budget) {
+    const remaining = budget.monthlyLimit - (budget.currentSpent || 0);
+    const pct = budget.monthlyLimit ? (budget.currentSpent / budget.monthlyLimit) * 100 : null;
+    if (pct !== null) {
+      if (pct >= 100) suggestions.push('You are over budget. Consider pausing non-essential categories this week.');
+      else if (pct >= 85) suggestions.push('You are close to your budget. Try to cut discretionary spend for the rest of the month.');
+    }
+    suggestions.push(`Remaining budget: ₹${remaining.toFixed(2)} (limit ₹${budget.monthlyLimit.toFixed(2)}, spent ₹${budget.currentSpent.toFixed(2)}).`);
+  } else {
+    suggestions.push('Set a monthly budget to track against a limit.');
+  }
+
+  if (topCat) {
+    suggestions.push(`Your top category is ${topCat[0]} (₹${topCat[1].toFixed(2)}). Consider setting a cap or finding cheaper alternatives there.`);
+  }
+
+  if (!suggestions.length) {
+    suggestions.push('Track a few more expenses so I can give specific tips.');
+  }
+
+  return { text: suggestions.join(' ') };
+}
+
 module.exports = {
   setBudget,
   getBudget,
@@ -141,5 +305,12 @@ module.exports = {
   getMonthlySummary,
   getCategoryComparison,
   detectSpikes,
+  getSummaryByRange,
+  compareMonths,
+  getOverspendingStatus,
+  getTopCategories,
+  searchExpenses,
+  forecastSpend,
+  advice,
 };
 

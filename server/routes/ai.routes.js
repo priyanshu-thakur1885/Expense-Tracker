@@ -12,6 +12,53 @@ const AIInteraction = require('../models/AIInteraction');
 
 const router = express.Router();
 
+function extractDateRangeFromMessage(msg) {
+  const text = (msg || '').toLowerCase();
+  const dateRegex = /\d{4}-\d{2}-\d{2}/g;
+  const matches = msg.match(dateRegex);
+  if (matches && matches.length >= 2) {
+    return { start: matches[0], end: matches[1] };
+  }
+  if (/last 7 days|last week/.test(text)) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 7);
+    return { start, end };
+  }
+  if (/last 30 days|last month/.test(text)) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 30);
+    return { start, end };
+  }
+  return { start: null, end: null };
+}
+
+function extractSearchFilters(msg) {
+  const text = (msg || '').toLowerCase();
+  const filters = {};
+  const between = text.match(/between\s+(\d+(?:\.\d+)?)\s+(?:and|to)\s+(\d+(?:\.\d+)?)/);
+  if (between) {
+    filters.minAmount = parseFloat(between[1]);
+    filters.maxAmount = parseFloat(between[2]);
+  } else {
+    const above = text.match(/(above|over|greater than|more than)\s+(\d+(?:\.\d+)?)/);
+    const below = text.match(/(below|under|less than)\s+(\d+(?:\.\d+)?)/);
+    if (above) filters.minAmount = parseFloat(above[2]);
+    if (below) filters.maxAmount = parseFloat(below[2]);
+  }
+  const catMatch = text.match(/\b(in|for)\s+([a-z]+)\b/);
+  if (catMatch) filters.category = catMatch[2];
+
+  const keywordMatch = text.match(/with\s+([\w\s]+)/) || text.match(/containing\s+([\w\s]+)/) || text.match(/about\s+([\w\s]+)/);
+  if (keywordMatch) filters.keyword = keywordMatch[1].trim();
+
+  const { start, end } = extractDateRangeFromMessage(msg);
+  filters.startDate = start;
+  filters.endDate = end;
+  return filters;
+}
+
 // Bootstrap a few patterns on startup
 async function ensureBasePatterns() {
   const seeds = [
@@ -20,6 +67,13 @@ async function ensureBasePatterns() {
     { patternId: 'SET_BUDGET', handler: 'setBudget', sampleQuestions: ['my monthly budget is 6000rs', 'set my budget to 8000', 'monthly limit 5000', 'set budget 4000', 'budget 3000'], baseConfidence: 0.7 },
     { patternId: 'GET_BUDGET', handler: 'getBudget', sampleQuestions: ['what is my monthly budget', 'show my budget', 'current budget amount', 'budget left', 'remaining budget', 'how much budget do i have'], baseConfidence: 0.7 },
     { patternId: 'SET_ASSISTANT_NAME', handler: 'setAssistantName', sampleQuestions: ['i want to name you', 'set your name to hyperx', 'i will call you buddy', 'your name is hyperx', 'call you hyperx'], baseConfidence: 0.7 },
+    { patternId: 'CUSTOM_RANGE_SUMMARY', handler: 'summaryRange', sampleQuestions: ['show my expenses from 2024-01-01 to 2024-01-15', 'total spent between 2024-02-01 and 2024-02-10', 'last 30 days spend', 'last week expenses'], baseConfidence: 0.65 },
+    { patternId: 'MONTHLY_COMPARISON', handler: 'compareMonths', sampleQuestions: ['compare this month to last month', 'month vs month spending', 'did i spend more than last month'], baseConfidence: 0.65 },
+    { patternId: 'OVERSPENDING_CHECK', handler: 'overspending', sampleQuestions: ['am i over budget', 'am i overspending', 'budget status', 'near my limit'], baseConfidence: 0.65 },
+    { patternId: 'TOP_CATEGORY', handler: 'topCategories', sampleQuestions: ['top spending category', 'which category is highest', 'where did i spend the most', 'lowest spending category'], baseConfidence: 0.65 },
+    { patternId: 'SEARCH_FILTER', handler: 'searchExpenses', sampleQuestions: ['show expenses above 500', 'find expenses below 200 in food', 'search groceries between 100 and 300', 'filter expenses with coffee'], baseConfidence: 0.65 },
+    { patternId: 'FORECAST', handler: 'forecast', sampleQuestions: ['forecast my spending', 'predict this month total', 'expected monthly spend', 'projected savings'], baseConfidence: 0.6 },
+    { patternId: 'ADVICE', handler: 'advice', sampleQuestions: ['how can i save money', 'am i overspending', 'give me tips to spend less', 'is my spending healthy'], baseConfidence: 0.6 },
   ];
   for (const seed of seeds) {
     await upsertPattern(seed);
@@ -106,6 +160,36 @@ router.post('/chat', authenticateToken, async (req, res) => {
         success = true;
       } else if (intent === INTENTS.SHOW_SUMMARY || patternId === 'MONTHLY_SUMMARY') {
         actionResult = await actionEngine.getMonthlySummary(req.user._id, 0);
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.CUSTOM_RANGE_SUMMARY || patternId === 'CUSTOM_RANGE_SUMMARY') {
+        const { start, end } = extractDateRangeFromMessage(cleanMsg);
+        actionResult = await actionEngine.getSummaryByRange(req.user._id, start, end);
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.MONTHLY_COMPARISON || patternId === 'MONTHLY_COMPARISON') {
+        actionResult = await actionEngine.compareMonths(req.user._id, 0, -1);
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.OVERSPENDING_CHECK || patternId === 'OVERSPENDING_CHECK') {
+        actionResult = await actionEngine.getOverspendingStatus(req.user._id);
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.TOP_CATEGORY || patternId === 'TOP_CATEGORY') {
+        actionResult = await actionEngine.getTopCategories(req.user._id, {});
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.SEARCH_FILTER || patternId === 'SEARCH_FILTER') {
+        const filters = extractSearchFilters(cleanMsg);
+        actionResult = await actionEngine.searchExpenses(req.user._id, filters);
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.FORECAST || patternId === 'FORECAST') {
+        actionResult = await actionEngine.forecastSpend(req.user._id);
+        success = true;
+        clarification = null;
+      } else if (intent === INTENTS.ADVICE || patternId === 'ADVICE') {
+        actionResult = await actionEngine.advice(req.user._id);
         success = true;
         clarification = null;
       } else if (intent === INTENTS.CATEGORY_ANALYSIS || patternId === 'CATEGORY_ANALYSIS') {
