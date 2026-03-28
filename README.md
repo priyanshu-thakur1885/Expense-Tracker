@@ -10,7 +10,7 @@ A comprehensive expense tracking web application designed for students to monito
 - **Protected Routes** - User-specific data access
 
 ### 💰 Expense Tracking
-- **Add Expenses** - Track food items, amounts, categories, and food courts
+- **Add Expenses** - Track food items, amounts, categories, and food courts of their colleges
 - **Edit & Delete** - Full CRUD operations for expense management
 - **Smart Categories** - Breakfast, Lunch, Dinner, Snacks, Beverages, Other
 - **Location Integration** - Track expenses by location
