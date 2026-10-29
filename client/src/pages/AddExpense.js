@@ -40,6 +40,7 @@ const AddExpense = () => {
     'NK Food Court',
     'Food Factory',
     'Other(Outside Campus)',
+    'unimall'
   ];
 
   const handleInputChange = (e) => {
